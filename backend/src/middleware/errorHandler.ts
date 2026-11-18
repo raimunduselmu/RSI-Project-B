@@ -5,7 +5,7 @@ import { isProd } from '../config/env.js';
 
 export const notFound: RequestHandler = (_req, _res, next) => next(new AppError('ERR-DATA-01', 'Endpoint tidak ditemukan'));
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   let e: AppError;
   if (err instanceof AppError) e = err;

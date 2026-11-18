@@ -1,7 +1,6 @@
 import sql from 'mssql';
 import { drizzle } from 'drizzle-orm/node-mssql';
 import { env } from '../config/env.js';
-import * as schema from './schema/index.js';
 
 export const dbConfig: sql.config = {
   server: env.DB_HOST,
@@ -17,5 +16,7 @@ export const dbConfig: sql.config = {
 export const pool = new sql.ConnectionPool(dbConfig);
 export const poolReady = pool.connect();
 
-export const db = drizzle({ client: pool, schema });
+// Drizzle v1: opsi `schema` tidak dipakai lagi; skema dibaca drizzle-kit dari drizzle.config.ts.
+// Query: import tabel dari './schema/index.js', lalu db.select().from(users)...
+export const db = drizzle({ client: pool });
 export type DB = typeof db;
