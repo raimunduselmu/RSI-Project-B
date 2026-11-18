@@ -1,0 +1,64 @@
+openapi: 3.0.3
+info:
+  title: KMK UNS API
+  version: 1.0.0
+  description: Sesuai TSD v1.1 Bagian 3. Tambahkan setiap endpoint baru di sini.
+servers:
+  - url: /api/v1
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: kmk_token
+  schemas:
+    Error:
+      type: object
+      properties:
+        status: { type: string, example: error }
+        error_code: { type: string, example: ERR-AUTH-02 }
+        message: { type: string }
+paths:
+  /health:
+    get:
+      summary: Cek status layanan
+      responses:
+        '200': { description: OK }
+  /auth/login:
+    post:
+      summary: Login (FSD-2.1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, example: admin }
+                password: { type: string, example: Admin-12345 }
+      responses:
+        '200': { description: Sukses, cookie kmk_token dikirim }
+        '401':
+          description: Username atau password tidak valid
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /auth/logout:
+    post:
+      summary: Logout (FSD-2.2)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Sukses }
+  /auth/me:
+    get:
+      summary: Profil pengguna login
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Sukses }
+  /auth/password:
+    patch:
+      summary: Ganti password sendiri (FSD-2.3)
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200': { description: Sukses }

@@ -1,0 +1,4 @@
+-- trg_revoke_roles_on_archive
+-- TSD 5.4 | cabut role pengurus saat periode diarsipkan
+-- TODO: implementasi sesuai TSD 5.4 (Event, Tabel, Logic).
+-- Pola: lihat trg_audit_changes.sql dan trg_block_archived_period.sql

@@ -1,0 +1,4 @@
+-- trg_asset_history
+-- TSD 5.4 | riwayat lokasi/kondisi/status aset
+-- TODO: implementasi sesuai TSD 5.4 (Event, Tabel, Logic).
+-- Pola: lihat trg_audit_changes.sql dan trg_block_archived_period.sql

@@ -1,0 +1,7 @@
+# Opsional: akses publik tanpa IP publik (TSD 1.2 Opsi A)
+tunnel: <TUNNEL_ID>
+credentials-file: /etc/cloudflared/<TUNNEL_ID>.json
+ingress:
+  - hostname: kmk-uns.example.com
+    service: http://localhost:80
+  - service: http_status:404

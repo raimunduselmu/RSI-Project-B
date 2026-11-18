@@ -1,0 +1,4 @@
+-- trg_incident_after_insert
+-- TSD 5.4 | status aset mengikuti insiden
+-- TODO: implementasi sesuai TSD 5.4 (Event, Tabel, Logic).
+-- Pola: lihat trg_audit_changes.sql dan trg_block_archived_period.sql

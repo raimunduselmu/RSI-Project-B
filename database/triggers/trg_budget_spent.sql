@@ -1,0 +1,4 @@
+-- trg_budget_spent
+-- TSD 5.4 | serapan anggaran
+-- TODO: implementasi sesuai TSD 5.4 (Event, Tabel, Logic).
+-- Pola: lihat trg_audit_changes.sql dan trg_block_archived_period.sql
