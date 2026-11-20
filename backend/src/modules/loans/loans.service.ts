@@ -3,7 +3,7 @@ import { env } from '../../config/env.js';
 import { AppError } from '../../lib/AppError.js';
 import { loanDecision, loanSubmitted } from '../../lib/emailTemplates.js';
 import type { ErrorCode } from '../../lib/errors.js';
-import { sendEmailLogged } from '../../lib/notify.js';
+import { notifyRoles, sendEmailLogged } from '../../lib/notify.js';
 import { getSetting } from '../../lib/settings.js';
 import { callProcedure, query, sql } from '../../lib/sql.js';
 import { waLink } from '../../lib/waLink.js';
@@ -73,6 +73,7 @@ export async function submit(input: CreateLoanInput, ip?: string) {
   // Email konfirmasi setelah commit; kegagalan email tidak menggagalkan pengajuan (AC-08)
   const m = await mailData(loanId);
   await sendEmailLogged({ to: input.borrower_email, ...loanSubmitted(m, statusUrl()) });
+  await notifyRoles(['Sarpras'], { type: 'LOAN_SUBMITTED', title: `Pengajuan peminjaman baru ${code}`, message: `${input.borrower_name} mengajukan peminjaman ${m.place}. Mohon ditinjau.`, relatedId: loanId });
 
   return { loan_id: loanId, loan_code: code, status: 'MENUNGGU', pic_wa_link: await sarprasWaLink(code, input.borrower_name) };
 }

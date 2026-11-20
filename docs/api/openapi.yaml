@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
   title: KMK UNS API
-  version: 1.2.0
+  version: 1.3.0
   description: |
     Sesuai TSD v1.1 Bagian 3. Gelombang 1: Auth, Aset, Ruangan, Ketersediaan, Peminjaman, Cek Status.
     Gelombang 2: Kepengurusan (periode, divisi, jabatan, pengurus), Parameter Sistem, Iuran Kas.
+    Gelombang 3: Kelola Pengguna, Notifikasi (aplikasi + email pengurus), Kas Masuk/Keluar, Anggaran, Laporan Keuangan, Dashboard.
     Semua response memakai envelope { status, data, message?, meta? } atau { status:'error', error_code, message, details? }.
 servers:
   - url: /api/v1
@@ -494,3 +495,185 @@ paths:
       parameters: [{ $ref: '#/components/parameters/PaymentKey' }]
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reject_reason], properties: { reject_reason: { type: string, example: Nominal transfer tidak sesuai } } } } } }
       responses: { '200': { description: '{ status: DITOLAK }' }, '409': { description: ERR-KAS-03 }, '422': { description: ERR-VAL-01 } }
+  /users:
+    get:
+      tags: [Pengguna]
+      summary: Daftar pengguna (Admin, FSD-2.4)
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: q, in: query, schema: { type: string }, description: nama / username / email }
+        - { name: role, in: query, schema: { type: string, enum: [Admin, Sarpras, PHT, Liturgi, Bendahara, Pastor] } }
+        - { name: is_active, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses: { '200': { description: 'OK (meta pagination). Tiap baris punya roles[] dan is_locked' } }
+    post:
+      tags: [Pengguna]
+      summary: Buat akun pengurus + role (Admin, FSD-2.4). Password sementara hanya tampil sekali
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [full_name, username, roles]
+              properties:
+                full_name: { type: string }
+                username: { type: string, example: maria.bendahara, description: 'Dipakai untuk login. Bukan email' }
+                email: { type: string, nullable: true, description: 'Opsional. Bila diisi, notifikasi aplikasi disalin ke email ini (FSD-2.21)' }
+                phone: { type: string, nullable: true, example: '08123456789' }
+                division: { type: string, nullable: true }
+                roles: { type: array, items: { type: string, enum: [Admin, Sarpras, PHT, Liturgi, Bendahara, Pastor] } }
+      responses: { '201': { description: '{ user, temporary_password } — must_change_password = true' }, '409': { description: 'ERR-DATA-02 (username dipakai)' }, '422': { description: ERR-VAL-01 } }
+  /users/{id}:
+    get:
+      tags: [Pengguna]
+      summary: Detail pengguna (Admin)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+    patch:
+      tags: [Pengguna]
+      summary: Ubah data / aktifkan-nonaktifkan (Admin). Nonaktif mencabut sesi aktif
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { full_name: { type: string }, email: { type: string, nullable: true }, phone: { type: string, nullable: true }, division: { type: string, nullable: true }, is_active: { type: boolean } } } } } }
+      responses: { '200': { description: OK }, '409': { description: 'ERR-USR-01 (Admin aktif terakhir) / ERR-USR-02 (akun sendiri)' } }
+  /users/{id}/roles:
+    patch:
+      tags: [Pengguna]
+      summary: Ganti daftar role (Admin). Role yang dilepas dicabut, bukan dihapus
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [roles], properties: { roles: { type: array, items: { type: string } } } } } } }
+      responses: { '200': { description: OK }, '409': { description: ERR-USR-01 } }
+  /users/{id}/reset-password:
+    post:
+      tags: [Pengguna]
+      summary: Reset password (Admin, FSD-2.3) — password sementara baru, akun dibuka kuncinya
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: '{ temporary_password } hanya tampil sekali' } }
+  /notifications:
+    get:
+      tags: [Notifikasi]
+      summary: Notifikasi aplikasi milik sendiri (FSD-2.21). meta.unread = jumlah belum dibaca
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: unread, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses: { '200': { description: OK } }
+  /notifications/read-all:
+    post:
+      tags: [Notifikasi]
+      summary: Tandai semua dibaca
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifikasi]
+      summary: Tandai satu notifikasi dibaca
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+  /finance/cash-transactions:
+    get:
+      tags: [Keuangan]
+      summary: Daftar kas masuk/keluar (Bendahara/PHT, FSD-2.32). Default periode AKTIF
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: type, in: query, schema: { type: string, enum: [MASUK, KELUAR] } }
+        - { name: status, in: query, schema: { type: string, enum: [DISETUJUI, MENUNGGU_PERSETUJUAN, DITOLAK] } }
+        - { name: period_id, in: query, schema: { type: integer } }
+        - { name: month, in: query, schema: { type: string, example: 2026-11 } }
+        - { name: budget_id, in: query, schema: { type: integer } }
+        - { name: q, in: query, schema: { type: string } }
+      responses: { '200': { description: OK (meta pagination) } }
+    post:
+      tags: [Keuangan]
+      summary: Catat kas masuk/keluar (Bendahara, FSD-2.32). Melebihi anggaran → ERR-FIN-01 kecuali request_approval=true
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [transaction_type, amount, category]
+              properties:
+                transaction_type: { type: string, enum: [MASUK, KELUAR] }
+                amount: { type: number }
+                category: { type: string }
+                transaction_date: { type: string, example: 2026-11-20, description: 'Default hari ini (WIB)' }
+                budget_id: { type: integer, description: 'Hanya untuk KELUAR' }
+                description: { type: string }
+                request_approval: { type: boolean, description: 'true = ajukan walau melebihi anggaran → status MENUNGGU_PERSETUJUAN, PHT diberi tahu' }
+                proof: { type: string, format: binary, description: 'Opsional. PDF/JPG/PNG ≤ 5 MB' }
+      responses: { '201': { description: 'Transaksi (status DISETUJUI atau MENUNGGU_PERSETUJUAN)' }, '409': { description: ERR-FIN-01 }, '422': { description: 'ERR-VAL-01 / ERR-VAL-08' } }
+  /finance/cash-transactions/{id}:
+    get:
+      tags: [Keuangan]
+      summary: Detail transaksi kas
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+  /finance/cash-transactions/{id}/proof:
+    get:
+      tags: [Keuangan]
+      summary: Unduh bukti transaksi
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: File }, '404': { description: ERR-DATA-01 } }
+  /finance/cash-transactions/{id}/approve:
+    post:
+      tags: [Keuangan]
+      summary: PHT menyetujui pengeluaran over-budget (FSD-2.33 AF-1)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '409': { description: 'ERR-KAS-03 (tidak menunggu persetujuan)' } }
+  /finance/cash-transactions/{id}/reject:
+    post:
+      tags: [Keuangan]
+      summary: PHT menolak pengeluaran over-budget (alasan wajib)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reason], properties: { reason: { type: string } } } } } }
+      responses: { '200': { description: OK }, '409': { description: ERR-KAS-03 }, '422': { description: ERR-VAL-01 } }
+  /finance/budgets:
+    get:
+      tags: [Keuangan]
+      summary: Daftar pos anggaran + serapan (Bendahara/PHT, FSD-2.33). Default periode AKTIF
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: period_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: 'planned_amount, spent_amount, remaining, used_percent' } }
+    post:
+      tags: [Keuangan]
+      summary: Buat pos anggaran (Bendahara)
+      security: [{ cookieAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [pos_name, planned_amount], properties: { period_id: { type: integer }, pos_name: { type: string }, planned_amount: { type: number } } } } } }
+      responses: { '201': { description: OK }, '409': { description: 'ERR-DATA-02 (pos sama di periode itu)' } }
+  /finance/budgets/{id}:
+    patch:
+      tags: [Keuangan]
+      summary: Ubah nama / nominal anggaran (Bendahara)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IntId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { pos_name: { type: string }, planned_amount: { type: number } } } } } }
+      responses: { '200': { description: OK } }
+  /finance/reports:
+    get:
+      tags: [Keuangan]
+      summary: Laporan keuangan per periode (Bendahara/PHT, FSD-2.34)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: period_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: '{ period, ringkasan{total_masuk,total_keluar,saldo}, per_bulan[], per_kategori[], anggaran[], menunggu_persetujuan }' } }
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Ringkasan per role (FSD-2.40). Bagian yang muncul menyesuaikan role pengguna
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: '{ notifications, my_kas?, sarpras?, keuangan?, admin? }' } }

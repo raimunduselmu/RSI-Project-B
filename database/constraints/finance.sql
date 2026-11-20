@@ -1,4 +1,6 @@
 -- CHECK, UNIQUE & index tabel Keuangan + Iuran Kas (TSD Bagian 4, FSD-2.33, 2.43, 2.44). Aman dijalankan ulang.
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UQ_budgets_period_pos')
+  CREATE UNIQUE INDEX UQ_budgets_period_pos ON dbo.budgets (period_id, pos_name);
 IF OBJECT_ID(N'dbo.CK_budgets_amount', N'C') IS NULL
   ALTER TABLE dbo.budgets ADD CONSTRAINT CK_budgets_amount CHECK (planned_amount > 0 AND spent_amount >= 0);
 
