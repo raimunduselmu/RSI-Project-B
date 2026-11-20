@@ -1,64 +1,496 @@
 openapi: 3.0.3
 info:
   title: KMK UNS API
-  version: 1.0.0
-  description: Sesuai TSD v1.1 Bagian 3. Tambahkan setiap endpoint baru di sini.
+  version: 1.2.0
+  description: |
+    Sesuai TSD v1.1 Bagian 3. Gelombang 1: Auth, Aset, Ruangan, Ketersediaan, Peminjaman, Cek Status.
+    Gelombang 2: Kepengurusan (periode, divisi, jabatan, pengurus), Parameter Sistem, Iuran Kas.
+    Semua response memakai envelope { status, data, message?, meta? } atau { status:'error', error_code, message, details? }.
 servers:
   - url: /api/v1
 components:
   securitySchemes:
-    cookieAuth:
-      type: apiKey
-      in: cookie
-      name: kmk_token
+    cookieAuth: { type: apiKey, in: cookie, name: kmk_token }
+    bearerAuth: { type: http, scheme: bearer }
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1 } }
+    PerPage: { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 100 } }
+    Key: { name: id, in: path, required: true, description: UUID atau kode (ELEC-120326 / PJM-201126-004), schema: { type: string } }
+    IntId: { name: id, in: path, required: true, schema: { type: integer } }
+    UuidId: { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    PaymentKey: { name: id, in: path, required: true, description: UUID atau kode IUR-DDMMYY-NNN, schema: { type: string } }
   schemas:
     Error:
       type: object
       properties:
         status: { type: string, example: error }
-        error_code: { type: string, example: ERR-AUTH-02 }
+        error_code: { type: string, example: ERR-LOAN-01 }
         message: { type: string }
+        details: { type: object, additionalProperties: { type: array, items: { type: string } } }
+    AssetInput:
+      type: object
+      required: [asset_name, category_id, location_text, source_type, acquired_date]
+      properties:
+        asset_name: { type: string, example: Keyboard Yamaha PSR-E473 }
+        category_id: { type: integer, example: 2 }
+        location_text: { type: string, example: Aula Gereja Kampus }
+        asset_condition: { type: string, enum: [BAIK, RUSAK_RINGAN, RUSAK_BERAT] }
+        is_lendable: { type: boolean }
+        source_type: { type: string, enum: [KAS, DONASI, HIBAH] }
+        donor_name: { type: string, description: Wajib bila DONASI/HIBAH }
+        acquired_date: { type: string, format: date }
+        acquisition_value: { type: number, example: 4250000 }
+        description: { type: string }
+        photo: { type: string, format: binary, description: JPG/PNG ≤ 5 MB (multipart) }
+    LoanInput:
+      type: object
+      required: [request_type, start_at, end_at, borrower_name, borrower_phone, borrower_email, purpose]
+      properties:
+        request_type: { type: string, enum: [RUANGAN, ASET] }
+        room_id: { type: integer, example: 1, description: Wajib bila RUANGAN }
+        asset_ids: { type: array, items: { type: string, format: uuid }, description: Wajib bila ASET }
+        start_at: { type: string, format: date-time, example: '2026-11-27T11:00:00Z' }
+        end_at: { type: string, format: date-time, example: '2026-11-27T14:00:00Z' }
+        use_facilities: { type: boolean }
+        borrower_name: { type: string, example: Budi Santoso }
+        borrower_phone: { type: string, example: '081234567890' }
+        borrower_email: { type: string, format: email, example: budi.santoso@gmail.com }
+        borrower_org: { type: string, example: UKM Paduan Suara Mahasiswa }
+        purpose: { type: string, example: Latihan gabungan persiapan konser Natal. }
+security: []
 paths:
   /health:
-    get:
-      summary: Cek status layanan
-      responses:
-        '200': { description: OK }
+    get: { tags: [Sistem], summary: Cek layanan, responses: { '200': { description: OK } } }
+
   /auth/login:
     post:
+      tags: [Auth]
       summary: Login (FSD-2.1)
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [username, password]
-              properties:
-                username: { type: string, example: admin }
-                password: { type: string, example: Admin-12345 }
+            schema: { type: object, required: [username, password], properties: { username: { type: string, example: fransiskus.sarpras }, password: { type: string, example: Demo-12345 } } }
       responses:
         '200': { description: Sukses, cookie kmk_token dikirim }
-        '401':
-          description: Username atau password tidak valid
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/Error' }
+        '401': { description: ERR-AUTH-02, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /auth/logout:
-    post:
-      summary: Logout (FSD-2.2)
-      security: [{ cookieAuth: [] }]
-      responses:
-        '200': { description: Sukses }
+    post: { tags: [Auth], summary: Logout (FSD-2.2), security: [{ cookieAuth: [] }], responses: { '200': { description: OK } } }
   /auth/me:
-    get:
-      summary: Profil pengguna login
-      security: [{ cookieAuth: [] }]
-      responses:
-        '200': { description: Sukses }
+    get: { tags: [Auth], summary: Profil pengguna login, security: [{ cookieAuth: [] }], responses: { '200': { description: OK } } }
   /auth/password:
     patch:
+      tags: [Auth]
       summary: Ganti password sendiri (FSD-2.3)
       security: [{ cookieAuth: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { current_password: { type: string }, new_password: { type: string }, confirm_password: { type: string } } } } } }
+      responses: { '200': { description: OK } }
+
+  /asset-categories:
+    get: { tags: [Katalog], summary: Daftar kategori aset (publik, FSD-2.5), responses: { '200': { description: OK } } }
+    post:
+      tags: [Katalog]
+      summary: Tambah kategori (Sarpras, Admin)
+      security: [{ cookieAuth: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, required: [category_code, category_name], properties: { category_code: { type: string, example: ELEC }, category_name: { type: string, example: Elektronik }, maintenance_default_days: { type: integer, example: 90 } } } } } }
+      responses: { '201': { description: Dibuat }, '409': { description: ERR-DATA-02 } }
+  /asset-categories/{id}:
+    patch:
+      tags: [Katalog]
+      summary: Ubah kategori (kode tidak bisa diubah)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { category_name: { type: string }, maintenance_default_days: { type: integer } } } } } }
+      responses: { '200': { description: OK } }
+  /rooms:
+    get:
+      tags: [Katalog]
+      summary: Daftar ruangan aktif (publik, FSD-2.9). Pengurus dapat ?all=1
+      parameters: [{ name: all, in: query, schema: { type: string, enum: ['1'] } }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Katalog]
+      summary: Tambah ruangan (Sarpras, Admin)
+      security: [{ cookieAuth: [] }]
+      requestBody: { content: { application/json: { schema: { type: object, required: [room_name], properties: { room_name: { type: string }, capacity: { type: integer }, description: { type: string }, is_active: { type: boolean } } } } } }
+      responses: { '201': { description: Dibuat } }
+  /rooms/{id}:
+    patch:
+      tags: [Katalog]
+      summary: Ubah ruangan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { room_name: { type: string }, capacity: { type: integer }, description: { type: string }, is_active: { type: boolean } } } } } }
+      responses: { '200': { description: OK } }
+
+  /assets:
+    get:
+      tags: [Aset]
+      summary: Cari & daftar aset (FSD-2.7). Publik melihat field terbatas.
+      parameters:
+        - { name: q, in: query, schema: { type: string }, description: Kode unik atau nama }
+        - { name: category_id, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [TERSEDIA, DIPINJAM, DIGUNAKAN, PEMELIHARAAN, HILANG, NONAKTIF] } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses: { '200': { description: OK (dengan meta pagination) } }
+    post:
+      tags: [Aset]
+      summary: Registrasi aset + kode unik otomatis (Sarpras, Admin, FSD-2.5)
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        content:
+          multipart/form-data: { schema: { $ref: '#/components/schemas/AssetInput' } }
+          application/json: { schema: { $ref: '#/components/schemas/AssetInput' } }
+      responses: { '201': { description: Dibuat }, '422': { description: ERR-VAL-01 } }
+  /assets/code-preview:
+    get:
+      tags: [Aset]
+      summary: Pratinjau kode unik yang akan dibuat hari ini (SCR-06)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: category_id, in: query, required: true, schema: { type: integer } }]
+      responses: { '200': { description: '{ asset_code }' } }
+  /assets/{id}:
+    get:
+      tags: [Aset]
+      summary: Detail aset (publik field terbatas)
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+    patch:
+      tags: [Aset]
+      summary: Ubah aset (Sarpras, Admin). Riwayat lokasi/kondisi/status tercatat otomatis.
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      requestBody:
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/AssetInput' } }
+          multipart/form-data: { schema: { $ref: '#/components/schemas/AssetInput' } }
+      responses: { '200': { description: OK } }
+    delete:
+      tags: [Aset]
+      summary: Hapus aset (soft delete, Admin)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      responses: { '200': { description: OK } }
+  /assets/{id}/histories:
+    get:
+      tags: [Aset]
+      summary: Riwayat keterlacakan aset (pengurus, FSD-2.8)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      responses: { '200': { description: OK } }
+  /assets/{id}/photo:
+    get:
+      tags: [Aset]
+      summary: Foto aset
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      responses: { '200': { description: Berkas gambar } }
+
+  /availability:
+    get:
+      tags: [Jadwal]
+      summary: Cek ketersediaan ruangan/aset (publik, FSD-2.9)
+      parameters:
+        - { name: room_id, in: query, schema: { type: integer } }
+        - { name: asset_ids, in: query, schema: { type: string }, description: UUID dipisah koma }
+        - { name: start_at, in: query, required: true, schema: { type: string, format: date-time } }
+        - { name: end_at, in: query, required: true, schema: { type: string, format: date-time } }
+      responses: { '200': { description: '{ available, conflicts[] }' } }
+  /calendar:
+    get:
+      tags: [Jadwal]
+      summary: Kalender pemakaian (publik melihat label "Terpakai", FSD-2.9)
+      parameters:
+        - { name: month, in: query, schema: { type: string, example: '2026-11' } }
+        - { name: room_id, in: query, schema: { type: integer } }
+      responses: { '200': { description: OK } }
+
+  /loans:
+    post:
+      tags: [Peminjaman]
+      summary: Ajukan peminjaman (publik, 5/jam/IP, FSD-2.10)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/LoanInput' } } } }
       responses:
-        '200': { description: Sukses }
+        '201': { description: '{ loan_id, loan_code, status, pic_wa_link }' }
+        '409': { description: ERR-LOAN-01 / ERR-LOAN-02 }
+        '422': { description: ERR-VAL-01 / ERR-VAL-04 }
+        '429': { description: ERR-RATE-01 }
+    get:
+      tags: [Peminjaman]
+      summary: Daftar pengajuan (Sarpras, Admin, PHT baca, FSD-2.11)
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [MENUNGGU, DISETUJUI, DITOLAK, DIAMBIL, SELESAI, DIBATALKAN] } }
+        - { name: q, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+      responses: { '200': { description: OK } }
+  /loans/{id}:
+    get:
+      tags: [Peminjaman]
+      summary: Detail pengajuan + item + jejak persetujuan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      responses: { '200': { description: OK } }
+  /loans/{id}/approve:
+    post:
+      tags: [Peminjaman]
+      summary: Setujui (Sarpras, Admin) — sp_approve_loan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { note: { type: string } } } } } }
+      responses: { '200': { description: OK }, '409': { description: ERR-LOAN-01 / ERR-LOAN-03 } }
+  /loans/{id}/reject:
+    post:
+      tags: [Peminjaman]
+      summary: Tolak, alasan wajib (BR-25)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reject_reason], properties: { reject_reason: { type: string } } } } } }
+      responses: { '200': { description: OK } }
+  /loans/{id}/pickup:
+    post:
+      tags: [Peminjaman]
+      summary: Catat pengambilan (FSD-2.12) — sp_handover_loan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { type: object, properties: { asset_id: { type: string, format: uuid }, condition_out: { type: string, enum: [BAIK, RUSAK_RINGAN, RUSAK_BERAT] } } } }, note: { type: string } } } } } }
+      responses: { '200': { description: OK }, '409': { description: ERR-LOAN-03 } }
+  /loans/{id}/return:
+    post:
+      tags: [Peminjaman]
+      summary: Catat pengembalian (FSD-2.12) — sp_return_loan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { conditions: { type: array, items: { type: object, properties: { asset_id: { type: string, format: uuid }, condition: { type: string, enum: [BAIK, RUSAK_RINGAN, RUSAK_BERAT] } } } }, return_note: { type: string } } } } } }
+      responses: { '200': { description: '{ status: SELESAI, damaged_assets[] }' }, '409': { description: ERR-LOAN-04 } }
+
+  /public/status:
+    get:
+      tags: [Publik]
+      summary: Cek status pengajuan (10/jam/IP, FSD-2.46). Saat ini kode PJM.
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string, example: PJM-201126-004 } }
+        - { name: phone, in: query, required: true, schema: { type: string, example: '081234567890' } }
+      responses: { '200': { description: OK }, '404': { description: ERR-STS-01 } }
+
+  /public/settings:
+    get:
+      tags: [Publik]
+      summary: Parameter publik — QRIS, nomor WA, templat wa.me, tautan WA (FSD-2.45)
+      responses: { '200': { description: '{ settings: { KEY: nilai }, wa_links: { admin, bendahara, sarpras } }' } }
+  /public/settings/qris-image:
+    get:
+      tags: [Publik]
+      summary: Gambar QRIS KMK (FSD-2.43, 2.45)
+      responses: { '200': { description: Gambar PNG/JPG }, '404': { description: ERR-DATA-01 } }
+
+  /periods:
+    get:
+      tags: [Kepengurusan]
+      summary: Daftar periode + jumlah divisi & pengurus aktif (FSD-2.25)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Kepengurusan]
+      summary: Buat periode AKTIF (Admin/PHT, FSD-2.25). Ditolak bila masih ada periode AKTIF (BR-61)
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [period_name, start_date, end_date], properties: { period_name: { type: string, example: 2027/2028 }, start_date: { type: string, format: date, example: '2027-07-01' }, end_date: { type: string, format: date, example: '2028-06-30' } } } } }
+      responses: { '201': { description: Dibuat }, '409': { description: ERR-DATA-02 } }
+  /periods/active:
+    get:
+      tags: [Kepengurusan]
+      summary: Periode AKTIF (null bila belum ada)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /periods/{id}:
+    patch:
+      tags: [Kepengurusan]
+      summary: Ubah nama/tanggal periode (Admin/PHT). Periode ARSIP ditolak
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IntId' }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { period_name: { type: string }, start_date: { type: string, format: date }, end_date: { type: string, format: date } } } } } }
+      responses: { '200': { description: OK }, '409': { description: ERR-DATA-04 / ERR-DATA-02 }, '422': { description: ERR-VAL-04 } }
+  /periods/{id}/archive:
+    post:
+      tags: [Kepengurusan]
+      summary: Arsipkan periode → read-only, role pengurus dicabut, akun tanpa role dinonaktifkan (FSD-2.25 AF-1, BR-116). Tidak bisa dibatalkan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IntId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [confirm_name], properties: { confirm_name: { type: string, example: 2026/2027, description: Ketik ulang nama periode } } } } }
+      responses: { '200': { description: '{ ...periode, revoked_users, deactivated_users[] }' }, '409': { description: ERR-DATA-04 } }
+  /periods/{id}/copy-structure:
+    post:
+      tags: [Kepengurusan]
+      summary: Salin divisi & jabatan dari periode lain (FSD-2.25 AF-2)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IntId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [from_period_id], properties: { from_period_id: { type: integer } } } } } }
+      responses: { '201': { description: '{ divisions_created, positions_created }' } }
+  /divisions:
+    get:
+      tags: [Kepengurusan]
+      summary: Struktur divisi → jabatan → pengurus aktif (default periode AKTIF)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: period_id, in: query, schema: { type: integer } }]
+      responses: { '200': { description: '{ period, divisions: [{ positions: [{ role_name, officers[] }] }] }' } }
+    post:
+      tags: [Kepengurusan]
+      summary: Tambah divisi (Admin/PHT). role_name = role yang otomatis diberikan ke pengurus divisi ini (BR-115)
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [division_name], properties: { period_id: { type: integer, description: Default periode AKTIF }, division_name: { type: string, example: Komunikasi }, description: { type: string }, role_name: { type: string, enum: [Sarpras, PHT, Liturgi, Bendahara], nullable: true } } } } }
+      responses: { '201': { description: Dibuat }, '409': { description: ERR-DATA-02 / ERR-DATA-04 } }
+  /divisions/{id}:
+    patch:
+      tags: [Kepengurusan]
+      summary: Ubah divisi (Admin/PHT)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IntId' }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { division_name: { type: string }, description: { type: string }, role_name: { type: string, enum: [Sarpras, PHT, Liturgi, Bendahara], nullable: true } } } } } }
+      responses: { '200': { description: OK } }
+  /divisions/{id}/positions:
+    post:
+      tags: [Kepengurusan]
+      summary: Tambah jabatan pada divisi (Admin/PHT). role_name kosong = ikut role divisi
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/IntId' }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [position_name], properties: { position_name: { type: string, example: Bendahara }, is_leader: { type: boolean }, role_name: { type: string, enum: [Sarpras, PHT, Liturgi, Bendahara], nullable: true } } } } }
+      responses: { '201': { description: Dibuat }, '409': { description: ERR-DATA-02 / ERR-DATA-04 } }
+  /officers:
+    get:
+      tags: [Kepengurusan]
+      summary: Daftar pengurus (default periode AKTIF)
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: period_id, in: query, schema: { type: integer } }
+        - { name: division_id, in: query, schema: { type: integer } }
+        - { name: active, in: query, schema: { type: string, enum: ['1', '0'] } }
+        - { name: q, in: query, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Kepengurusan]
+      summary: Tetapkan pengurus pada jabatan → role divisi otomatis + tagihan iuran dibentuk (FSD-2.25, BR-115, BR-120)
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object, required: [member_id, position_id], properties: { member_id: { type: string, format: uuid }, position_id: { type: integer }, user_id: { type: string, format: uuid, description: Kosong = akun yang tertaut ke data umat }, start_date: { type: string, format: date, description: Default hari ini (WIB) } } } } }
+      responses: { '201': { description: Dibuat }, '409': { description: ERR-DATA-02 (BR-63) / ERR-DATA-04 }, '422': { description: ERR-VAL-04 } }
+  /officers/{id}:
+    get:
+      tags: [Kepengurusan]
+      summary: Detail pengurus
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK } }
+    patch:
+      tags: [Kepengurusan]
+      summary: Akhiri jabatan (end_date) atau tautkan akun (user_id). Jabatan berakhir → role dicabut
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { end_date: { type: string, format: date, nullable: true }, user_id: { type: string, format: uuid } } } } } }
+      responses: { '200': { description: OK }, '409': { description: ERR-DATA-04 } }
+
+  /settings:
+    get:
+      tags: [Parameter Sistem]
+      summary: Daftar parameter (Admin semua; Bendahara hanya QRIS_IMAGE, KAS_MONTHLY_RATE, FACILITY_RATE) (FSD-2.45)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /settings/{key}:
+    patch:
+      tags: [Parameter Sistem]
+      summary: Ubah parameter. QRIS_IMAGE memakai multipart field "file" (JPG/PNG ≤ 5 MB). Tercatat di audit (BR-127)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: key, in: path, required: true, schema: { type: string, enum: [KAS_MONTHLY_RATE, FACILITY_RATE, QRIS_IMAGE, WA_ADMIN, WA_BENDAHARA, WA_SARPRAS, WA_TEMPLATE_KAS_CASH] } }]
+      requestBody:
+        content:
+          application/json: { schema: { type: object, properties: { value: { type: string, example: '25000' } } } }
+          multipart/form-data: { schema: { type: object, properties: { file: { type: string, format: binary } } } }
+      responses: { '200': { description: '{ key, value, updated_at, preview }' }, '422': { description: ERR-VAL-08 / ERR-VAL-03 / ERR-VAL-01 } }
+
+  /kas/dues/me:
+    get:
+      tags: [Iuran Kas]
+      summary: Status bulan iuran milik sendiri + tarif + opsi QRIS/Cash (FSD-2.43, SCR-40)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: '{ period, is_active_officer, rate_per_month, methods, summary, dues[] }' } }
+  /kas/payments:
+    post:
+      tags: [Iuran Kas]
+      summary: Ajukan pembayaran iuran (pengurus aktif, FSD-2.43) — sp_submit_kas_payment
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [due_ids, method, proof]
+              properties:
+                due_ids: { type: string, description: 'JSON array UUID dari /kas/dues/me, mis. ["…","…"]' }
+                method: { type: string, enum: [QRIS, CASH] }
+                note: { type: string }
+                proof: { type: string, format: binary, description: PDF/JPG/PNG ≤ 5 MB }
+      responses: { '201': { description: '{ payment_id, payment_code: IUR-DDMMYY-NNN, total_amount, months, status }' }, '409': { description: ERR-KAS-01 / ERR-CFG-01 }, '403': { description: ERR-KAS-02 } }
+    get:
+      tags: [Iuran Kas]
+      summary: Daftar pengajuan untuk verifikasi (Bendahara/PHT, Admin baca) (FSD-2.44)
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: status, in: query, schema: { type: string, enum: [MENUNGGU_VERIFIKASI, DISETUJUI, DITOLAK] } }
+        - { name: method, in: query, schema: { type: string, enum: [QRIS, CASH] } }
+        - { name: month, in: query, schema: { type: string, example: 2026-08 } }
+        - { name: q, in: query, schema: { type: string } }
+      responses: { '200': { description: 'OK (meta pagination). Tiap baris punya can_verify & verifier_role' } }
+  /kas/payments/me:
+    get:
+      tags: [Iuran Kas]
+      summary: Riwayat pengajuan sendiri (FSD-2.43 AF-1)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: OK } }
+  /kas/recap:
+    get:
+      tags: [Iuran Kas]
+      summary: Rekap status iuran per pengurus per bulan, periode AKTIF (Bendahara/PHT/Admin, BO-12)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: q, in: query, schema: { type: string } }]
+      responses: { '200': { description: '{ months[], officers[{ cells: { YYYY-MM: status } }], totals }' } }
+  /kas/payments/{id}:
+    get:
+      tags: [Iuran Kas]
+      summary: Detail pengajuan (pemilik, Bendahara, PHT, Admin)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/PaymentKey' }]
+      responses: { '200': { description: OK } }
+  /kas/payments/{id}/proof:
+    get:
+      tags: [Iuran Kas]
+      summary: Pratinjau/unduh bukti (pemilik, Bendahara, PHT, Admin)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/PaymentKey' }]
+      responses: { '200': { description: Berkas bukti } }
+  /kas/payments/{id}/approve:
+    post:
+      tags: [Iuran Kas]
+      summary: Setujui → bulan LUNAS + Kas Masuk otomatis (FSD-2.44). Milik Bendahara → PHT (BR-125)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/PaymentKey' }]
+      responses: { '200': { description: '{ status: DISETUJUI, cash_transaction_id }' }, '409': { description: ERR-KAS-03 / ERR-DATA-04 } }
+  /kas/payments/{id}/reject:
+    post:
+      tags: [Iuran Kas]
+      summary: Tolak (alasan wajib) → bulan kembali BELUM_LUNAS (FSD-2.44)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/PaymentKey' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [reject_reason], properties: { reject_reason: { type: string, example: Nominal transfer tidak sesuai } } } } } }
+      responses: { '200': { description: '{ status: DITOLAK }' }, '409': { description: ERR-KAS-03 }, '422': { description: ERR-VAL-01 } }

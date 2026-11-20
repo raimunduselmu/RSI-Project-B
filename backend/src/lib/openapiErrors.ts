@@ -9,7 +9,6 @@
 // Kode yang disebut di description manual (mis. "ERR-LOAN-01 / ERR-LOAN-03") ikut diberi contoh.
 import { ERR, type ErrorCode } from './errors.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Json = Record<string, any>;
 const METHODS = ['get', 'post', 'put', 'patch', 'delete'] as const;
 const RATE_LIMITED = new Set(['post /loans', 'post /public/status', 'post /auth/login']);

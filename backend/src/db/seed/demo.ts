@@ -7,6 +7,8 @@ import { pool } from '../client.js';
 const USERS = [
   { username: 'fransiskus.sarpras', name: 'Fransiskus Adi', role: 'Sarpras', division: 'Sarana Prasarana' },
   { username: 'gregorius.pht', name: 'Gregorius Bima', role: 'PHT', division: 'Pengurus Harian' },
+  { username: 'maria.bendahara', name: 'Maria Christina', role: 'Bendahara', division: 'Pengurus Harian' },
+  { username: 'yohanes.liturgi', name: 'Yohanes Krisna', role: 'Liturgi', division: 'Liturgi' },
 ];
 
 const CATEGORIES = [

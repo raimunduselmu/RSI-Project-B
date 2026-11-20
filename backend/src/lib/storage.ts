@@ -25,3 +25,13 @@ export function resolveFile(relPath: string) {
   if (!full.startsWith(path.resolve(env.UPLOAD_DIR))) throw new Error('Path tidak valid');
   return full;
 }
+
+/** Hapus file yang sudah tersimpan (mis. pengajuan gagal setelah file diunggah). Tidak melempar galat. */
+export async function removeFile(relPath: string | null | undefined) {
+  if (!relPath || env.STORAGE_DRIVER === 'blob') return;
+  try {
+    await fs.unlink(resolveFile(relPath));
+  } catch {
+    /* file sudah tidak ada */
+  }
+}
