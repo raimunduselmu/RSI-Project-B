@@ -1,6 +1,7 @@
 // Katalog kode galat dari FSD Bagian 6 (Error Handling). Tambahkan bila perlu.
 export const ERR = {
   'ERR-VAL-01': { status: 422, message: 'Data yang dikirim tidak valid' },
+  'ERR-VAL-04': { status: 422, message: 'Waktu selesai harus setelah waktu mulai dan waktu mulai tidak boleh lewat' },
   'ERR-AUTH-01': { status: 401, message: 'Anda harus login untuk mengakses halaman ini' },
   'ERR-AUTH-02': { status: 401, message: 'Username atau password tidak valid' },
   'ERR-AUTH-03': { status: 403, message: 'Anda tidak memiliki izin untuk mengakses ini' },
@@ -14,6 +15,8 @@ export const ERR = {
   'ERR-LOAN-01': { status: 409, message: 'Jadwal bentrok dengan kegiatan lain. Pilih waktu lain' },
   'ERR-LOAN-02': { status: 409, message: 'Aset tidak tersedia untuk dipinjam' },
   'ERR-LOAN-03': { status: 409, message: 'Pengajuan sudah diproses dan tidak dapat diubah' },
+  'ERR-LOAN-04': { status: 409, message: 'Peminjaman belum diambil sehingga belum bisa dikembalikan' },
+  'ERR-WF-01': { status: 403, message: 'Anda bukan penyetuju pada tahap ini' },
   'ERR-KAS-01': { status: 409, message: 'Bulan yang dipilih sudah lunas atau sedang diverifikasi' },
   'ERR-KAS-02': { status: 403, message: 'Iuran kas hanya untuk pengurus aktif periode berjalan' },
   'ERR-KAS-03': { status: 409, message: 'Pengajuan ini tidak dapat Anda verifikasi' },

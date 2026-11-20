@@ -1,9 +1,11 @@
 import { EMAIL_RETRY } from '../config/constants.js';
 import { pool } from '../db/client.js';
 import { sendMail } from '../lib/mailer.js';
+import { emailDevMode } from '../lib/notify.js';
 
 /** Kirim ulang email FAILED/PENDING (maks 3 percobaan, BR-113). */
 export async function retryFailedEmails() {
+  if (emailDevMode()) return 0; // SMTP belum diatur: tidak ada yang bisa dikirim ulang
   const { recordset } = await pool.request().input('max', EMAIL_RETRY.MAX_ATTEMPTS).query(`
     SELECT TOP 20 log_id, recipient, subject, body FROM notification_logs
     WHERE channel = N'EMAIL' AND status IN (N'PENDING', N'FAILED') AND attempts < @max

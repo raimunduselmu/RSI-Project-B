@@ -3,6 +3,8 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { assetsRoutes } from './modules/assets/assets.routes.js';
 import { loansRoutes } from './modules/loans/loans.routes.js';
+import { catalogRoutes } from './modules/catalog/catalog.routes.js';
+import { scheduleRoutes } from './modules/schedule/schedule.routes.js';
 import { usageReportsRoutes } from './modules/usage-reports/usage-reports.routes.js';
 import { maintenanceRoutes } from './modules/maintenance/maintenance.routes.js';
 import { incidentsRoutes } from './modules/incidents/incidents.routes.js';
@@ -34,6 +36,8 @@ apiRouter.use('/auth', authRoutes);
 apiRouter.use('/users', usersRoutes);
 apiRouter.use('/assets', assetsRoutes);
 apiRouter.use('/loans', loansRoutes);
+apiRouter.use('/', catalogRoutes); // /asset-categories, /rooms
+apiRouter.use('/', scheduleRoutes); // /availability, /calendar
 apiRouter.use('/usage-reports', usageReportsRoutes);
 apiRouter.use('/', maintenanceRoutes);
 apiRouter.use('/incidents', incidentsRoutes);

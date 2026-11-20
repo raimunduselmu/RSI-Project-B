@@ -9,7 +9,7 @@ config();
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   APP_URL: z.string().default('http://localhost:5173'),
-  API_PORT: z.coerce.number().default(4000),
+  API_PORT: z.coerce.number().default(3000),
 
   DB_HOST: z.string().default('localhost'),
   DB_PORT: z.coerce.number().default(1433),
@@ -26,6 +26,8 @@ const schema = z.object({
 
   SEED_ADMIN_USERNAME: z.string().default('admin'),
   SEED_ADMIN_PASSWORD: z.string().default('Admin-12345'),
+  SEED_DEMO: z.string().default('true').transform((v) => v === 'true'),
+  SEED_DEMO_PASSWORD: z.string().default('Demo-12345'),
 
   SMTP_HOST: z.string().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().default(465),
