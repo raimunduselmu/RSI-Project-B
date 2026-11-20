@@ -6,3 +6,8 @@ export function monthRangeUtc(month?: string) {
   const end = new Date(Date.UTC(y, m, 1) - 7 * 3600_000);
   return { start, end, month: `${y}-${String(m).padStart(2, '0')}` };
 }
+
+/** Tanggal hari ini menurut WIB, format 'YYYY-MM-DD' */
+export function todayWib() {
+  return new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
+}

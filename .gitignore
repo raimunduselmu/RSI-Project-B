@@ -16,3 +16,9 @@ Thumbs.db
 .idea/
 .vercel/
 *.bak
+
+
+docs/manual/
+docs/screenshots/
+docs/test-script/
+docs/CATATAN-GELOMBANG-1.md

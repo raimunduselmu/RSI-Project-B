@@ -1,7 +1,9 @@
 // Katalog kode galat dari FSD Bagian 6 (Error Handling). Tambahkan bila perlu.
 export const ERR = {
   'ERR-VAL-01': { status: 422, message: 'Data yang dikirim tidak valid' },
+  'ERR-VAL-03': { status: 422, message: 'Masukkan nomor telepon yang valid (contoh: 08123456789)' },
   'ERR-VAL-04': { status: 422, message: 'Waktu selesai harus setelah waktu mulai dan waktu mulai tidak boleh lewat' },
+  'ERR-VAL-08': { status: 422, message: 'Nominal harus lebih dari 0' },
   'ERR-AUTH-01': { status: 401, message: 'Anda harus login untuk mengakses halaman ini' },
   'ERR-AUTH-02': { status: 401, message: 'Username atau password tidak valid' },
   'ERR-AUTH-03': { status: 403, message: 'Anda tidak memiliki izin untuk mengakses ini' },
@@ -20,7 +22,8 @@ export const ERR = {
   'ERR-KAS-01': { status: 409, message: 'Bulan yang dipilih sudah lunas atau sedang diverifikasi' },
   'ERR-KAS-02': { status: 403, message: 'Iuran kas hanya untuk pengurus aktif periode berjalan' },
   'ERR-KAS-03': { status: 409, message: 'Pengajuan ini tidak dapat Anda verifikasi' },
-  'ERR-CFG-01': { status: 409, message: 'Parameter sistem belum diatur. Hubungi Admin' },
+  'ERR-CFG-01': { status: 409, message: 'Pengaturan belum lengkap. Hubungi Admin' },
+  'ERR-FIN-01': { status: 409, message: 'Anggaran tidak mencukupi. Ajukan persetujuan PHT' },
   'ERR-STS-01': { status: 404, message: 'Kode atau nomor telepon tidak sesuai' },
   'ERR-FILE-01': { status: 422, message: 'File harus PDF/JPG/PNG dengan ukuran maksimal 5 MB' },
   'ERR-RATE-01': { status: 429, message: 'Terlalu banyak permintaan. Coba lagi beberapa saat lagi' },

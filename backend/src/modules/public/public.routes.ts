@@ -8,6 +8,7 @@ export const publicRoutes = Router();
 
 // Route statis ditulis sebelum route berparameter (/:id)
 publicRoutes.get('/settings', c.getSettings); // FSD-2.45
+publicRoutes.get('/settings/qris-image', c.getQrisImage); // FSD-2.43, 2.45
 publicRoutes.get('/events', c.getEvents); // FSD-2.30
 publicRoutes.get('/donor-transparency', c.getDonorTransparency); // FSD-2.42
 publicRoutes.get('/status', statusLimiter, validate(statusQuery, 'query'), c.getStatus); // FSD-2.46
