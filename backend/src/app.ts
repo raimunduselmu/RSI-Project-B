@@ -1,3 +1,4 @@
+import { withErrorResponses } from './lib/openapiErrors.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import express from 'express';
@@ -25,7 +26,7 @@ app.use('/api/v1', apiRouter);
 // Dokumentasi API: /api/docs
 const specPath = path.resolve(process.cwd(), '../docs/api/openapi.yaml');
 if (fs.existsSync(specPath)) {
-  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(YAML.parse(fs.readFileSync(specPath, 'utf8'))));
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(withErrorResponses(YAML.parse(fs.readFileSync(specPath, 'utf8')))));
 }
 
 app.use(notFound);

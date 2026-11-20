@@ -1,11 +1,12 @@
 // Menjalankan semua file .sql di folder /database (TSD Bagian 5).
-// Urutan: functions → views → procedures → triggers. File dipecah per baris "GO".
+// Urutan: constraints → functions → views → procedures → triggers. File dipecah per baris "GO".
+// Folder database/_pending TIDAK dijalankan (menunggu tabel modul lain).
 import fs from 'node:fs';
 import path from 'node:path';
 import { pool, poolReady } from '../client.js';
 
 const DB_DIR = process.env.DATABASE_DIR ?? path.resolve(process.cwd(), '../database');
-const ORDER = ['functions', 'views', 'procedures', 'triggers'];
+const ORDER = ['constraints', 'functions', 'views', 'procedures', 'triggers'];
 
 await poolReady;
 let ok = 0, skipped = 0, failed = 0;

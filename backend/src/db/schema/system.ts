@@ -43,4 +43,18 @@ export const auditLogs = mssqlTable('audit_logs', {
   createdAt: datetime2('created_at').notNull().default(sql`SYSUTCDATETIME()`),
 });
 
-// TODO (TSD 4): notifications, announcements
+export const notifications = mssqlTable('notifications', {
+  notificationId: uniqueidentifier('notification_id').primaryKey().default(sql`NEWID()`),
+  recipientUserId: uniqueidentifier('recipient_user_id').references(() => users.userId, { onDelete: 'set null' }),
+  recipientEmail: nvarchar('recipient_email', { length: 150 }),
+  type: nvarchar('type', { length: 50 }).notNull(), // LOAN_SUBMITTED, LOAN_APPROVED, LOAN_REJECTED, ...
+  title: nvarchar('title', { length: 150 }).notNull(),
+  message: nvarchar('message', { length: 'max' }).notNull(),
+  channel: nvarchar('channel', { length: 20 }).notNull(), // APLIKASI | EMAIL
+  relatedId: nvarchar('related_id', { length: 100 }),
+  isRead: bit('is_read').notNull().default(false),
+  sentAt: datetime2('sent_at'),
+  createdAt: datetime2('created_at').notNull().default(sql`SYSUTCDATETIME()`),
+});
+
+// TODO (TSD 4): announcements

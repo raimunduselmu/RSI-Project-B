@@ -10,6 +10,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   let e: AppError;
   if (err instanceof AppError) e = err;
   else if (err instanceof multer.MulterError) e = new AppError('ERR-FILE-01');
+  // body JSON rusak (mis. salah ketik true) atau terlalu besar → galat validasi, bukan 503
+  else if (err?.type === 'entity.parse.failed') e = new AppError('ERR-VAL-01', 'Format JSON tidak valid. Periksa tanda kutip, koma, dan nilai true/false');
+  else if (err?.type === 'entity.too.large') e = new AppError('ERR-VAL-01', 'Data yang dikirim terlalu besar');
   else if (typeof err?.message === 'string' && /ERR-[A-Z]+-\d{2}/.test(err.message)) {
     // galat dari THROW di stored procedure / trigger, contoh 'ERR-DATA-04'
     const code = err.message.match(/ERR-[A-Z]+-\d{2}/)![0];
