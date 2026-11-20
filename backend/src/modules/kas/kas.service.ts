@@ -2,6 +2,7 @@
 // Proses inti di stored procedure (TSD 5.1): sp_sync_kas_dues, sp_submit_kas_payment, sp_verify_kas_payment
 import type { RoleName } from '../../config/constants.js';
 import { AppError } from '../../lib/AppError.js';
+import { notifyRoles, notifyUsers } from '../../lib/notify.js';
 import { getSetting } from '../../lib/settings.js';
 import { failResult } from '../../lib/spResult.js';
 import { callProcedure, query, sql } from '../../lib/sql.js';
@@ -141,6 +142,11 @@ export async function submitPayment(input: SubmitPaymentInput, proofPath: string
         DUE_NOT_OPEN: ['ERR-KAS-01'],
       });
     }
+    await notifyRoles(
+      ['Bendahara', 'PHT'],
+      { type: 'KAS_SUBMITTED', title: `Pembayaran iuran ${String(output.payment_code)} menunggu verifikasi`, message: `${user.username} mengajukan iuran kas ${Number(output.months)} bulan (${rupiah(Number(output.total_amount))}).`, relatedId: String(output.payment_id) },
+      user.id,
+    );
     return {
       payment_id: String(output.payment_id),
       payment_code: String(output.payment_code),
@@ -288,6 +294,12 @@ export async function verify(key: string, approve: boolean, reason: string | nul
       INVALID_INPUT: ['ERR-VAL-01'],
     });
   }
+  await notifyUsers([p.user_id], {
+    type: approve ? 'KAS_APPROVED' : 'KAS_REJECTED',
+    title: approve ? `Iuran ${p.payment_code} disetujui` : `Iuran ${p.payment_code} ditolak`,
+    message: approve ? 'Pembayaran iuran kas Anda sudah diverifikasi dan bulan terkait berstatus lunas.' : `Pembayaran iuran kas Anda ditolak. Alasan: ${reason ?? '-'}. Silakan ajukan ulang.`,
+    relatedId: p.payment_id,
+  });
   return {
     payment_id: p.payment_id,
     payment_code: p.payment_code,

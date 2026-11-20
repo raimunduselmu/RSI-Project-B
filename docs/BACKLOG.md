@@ -1,7 +1,7 @@
 # Backlog Backend
 
 Fitur yang **sengaja ditunda**. Centang bila sudah dikerjakan.
-Gelombang 1: Aset + Peminjaman · Gelombang 2: Kepengurusan + Parameter Sistem + Iuran Kas.
+Gelombang 1: Aset + Peminjaman · Gelombang 2: Kepengurusan + Parameter Sistem + Iuran Kas · Gelombang 3: Kelola Pengguna + Notifikasi + Keuangan + Dashboard.
 
 ## Modul Aset & Peminjaman (lanjutan)
 - [ ] Dokumen aset — unggah/unduh/hapus (FSD-2.16): tabel `asset_documents`, endpoint `/assets/{id}/documents`
@@ -17,6 +17,14 @@ Gelombang 1: Aset + Peminjaman · Gelombang 2: Kepengurusan + Parameter Sistem +
 ## Cek Status publik (FSD-2.46)
 - [ ] Kode INT (intensi), PST (pendampingan), REG (pendaftaran kegiatan) — saat ini hanya PJM
 - [ ] `POST /public/status/cancel` (batalkan pendaftaran kegiatan)
+
+## Gelombang 3 (selesai) dan sisanya
+- [x] Kelola Pengguna (FSD-2.3/2.4), Notifikasi aplikasi + email pengurus (FSD-2.21), Kas Masuk/Keluar + Anggaran + alur over-budget (FSD-2.32/2.33), Laporan Keuangan (FSD-2.34), Dashboard (FSD-2.40)
+- [ ] Ekspor laporan dashboard (FSD-2.41): `GET /dashboard/export` masih 501
+- [ ] Serah terima jabatan (FSD-2.26): masih 501
+- [ ] `approval_logs` untuk over-budget: persetujuan PHT sekarang hanya mengubah status transaksi (belum dicatat di `approval_logs` karena perlu `workflow_steps` OVER_BUDGET)
+- [ ] Login memakai email (opsional): saat ini hanya `username`
+- [ ] Notifikasi email untuk event lain (liturgi terbit, kegiatan) saat modulnya dibuat: cukup panggil `notifyUsers`/`notifyRoles` dari `lib/notify.ts`
 
 ## Email
 - [ ] Isi `SMTP_USER` + `SMTP_PASS` (Gmail App Password). Selama kosong, email hanya tampil di terminal backend (mode dev).

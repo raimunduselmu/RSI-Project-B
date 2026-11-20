@@ -40,3 +40,11 @@ export const loanDecision = (l: LoanMail, approved: boolean, reason: string | nu
     ${approved ? '<p>Silakan ambil kunci/barang di sekretariat sesuai jadwal.</p>' : ''}
     <p>Detail: <a href="${statusUrl}">${statusUrl}</a></p>`),
 });
+
+/** Email notifikasi untuk pengurus (FSD-2.21): salinan notifikasi aplikasi */
+export const officerNotice = (title: string, message: string, appUrl?: string) => ({
+  subject: title,
+  html: wrap(esc(title), `
+    <p>${esc(message)}</p>
+    ${appUrl ? `<p><a href="${esc(appUrl)}" style="color:#544236">Buka aplikasi</a></p>` : ''}`),
+});

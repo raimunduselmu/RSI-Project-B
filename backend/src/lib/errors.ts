@@ -24,6 +24,8 @@ export const ERR = {
   'ERR-KAS-03': { status: 409, message: 'Pengajuan ini tidak dapat Anda verifikasi' },
   'ERR-CFG-01': { status: 409, message: 'Pengaturan belum lengkap. Hubungi Admin' },
   'ERR-FIN-01': { status: 409, message: 'Anggaran tidak mencukupi. Ajukan persetujuan PHT' },
+  'ERR-USR-01': { status: 409, message: 'Minimal harus ada satu Admin aktif' },
+  'ERR-USR-02': { status: 409, message: 'Anda tidak dapat menonaktifkan akun sendiri' },
   'ERR-STS-01': { status: 404, message: 'Kode atau nomor telepon tidak sesuai' },
   'ERR-FILE-01': { status: 422, message: 'File harus PDF/JPG/PNG dengan ukuran maksimal 5 MB' },
   'ERR-RATE-01': { status: 429, message: 'Terlalu banyak permintaan. Coba lagi beberapa saat lagi' },
