@@ -1,6 +1,7 @@
 export * from './auth.js';
 export * from './system.js';
 export * from './assets.js';
+export * from './inventory.js';
 export * from './loans.js';
 export * from './organization.js';
 export * from './members.js';

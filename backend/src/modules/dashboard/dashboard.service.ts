@@ -43,9 +43,22 @@ export async function summary(user: AuthUser) {
               SUM(CASE WHEN status = N'PEMELIHARAAN' THEN 1 ELSE 0 END) AS pemeliharaan
        FROM assets WHERE status <> N'NONAKTIF'`,
     );
+    const m = await one<{ segera: number; terlambat: number }>(
+      `SELECT SUM(CASE WHEN s.next_due_date >= @today AND s.next_due_date <= DATEADD(DAY, 7, @today) THEN 1 ELSE 0 END) AS segera,
+              SUM(CASE WHEN s.next_due_date < @today THEN 1 ELSE 0 END) AS terlambat
+       FROM maintenance_schedules s JOIN assets x ON x.asset_id = s.asset_id AND x.is_deleted = 0 WHERE s.is_active = 1`,
+      { today },
+    );
+    const inc = await one<{ terbuka: number }>(`SELECT COUNT(*) AS terbuka FROM incidents WHERE status <> N'SELESAI'`);
+    const use = await one<{ berlangsung: number }>(`SELECT COUNT(*) AS berlangsung FROM usage_reports WHERE status = N'BERLANGSUNG'`);
+    const st = await one<{ c: number }>(`SELECT COUNT(*) AS c FROM stocktake_periods WHERE status = N'TERBUKA'`);
     out.sarpras = {
       peminjaman: { menunggu_persetujuan: l.menunggu ?? 0, sedang_dipinjam: l.diambil ?? 0, jadwal_hari_ini: l.hari_ini ?? 0 },
       aset: { total: a.total, tersedia: a.tersedia ?? 0, dipinjam: a.dipinjam ?? 0, pemeliharaan: a.pemeliharaan ?? 0 },
+      pemeliharaan: { jatuh_tempo_7_hari: m.segera ?? 0, terlambat: m.terlambat ?? 0 },
+      insiden_terbuka: inc.terbuka,
+      pemakaian_internal_berlangsung: use.berlangsung,
+      pemeriksaan_fisik_terbuka: st.c > 0,
     };
   }
 

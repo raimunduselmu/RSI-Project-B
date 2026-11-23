@@ -55,3 +55,20 @@ export const assetKeyParam = z.object({ id: z.string().trim().min(3).max(50) });
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;
 export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
 export type ListAssetQuery = z.infer<typeof listAssetQuery>;
+
+/* ---------- FSD-2.6 Cetak label & FSD-2.16 Dokumen aset (gelombang 4) ---------- */
+export const labelSchema = z.object({
+  /** UUID atau kode aset; 1–200 per sekali cetak */
+  asset_ids: z.array(z.string().trim().min(3).max(50)).min(1, 'Pilih minimal satu aset').max(200),
+  label_size: z.enum(['kecil', 'sedang']).default('sedang'),
+});
+
+export const DOC_TYPES = ['NOTA', 'GARANSI', 'BERITA_ACARA', 'FOTO', 'LAINNYA'] as const;
+export const uploadDocumentSchema = z.object({
+  doc_type: z.enum(DOC_TYPES, { errorMap: () => ({ message: 'Pilih jenis dokumen' }) }),
+  doc_title: z.string().trim().min(3).max(150),
+});
+export const documentParam = z.object({ id: z.string().trim().min(3).max(50), docId: z.string().uuid('ID dokumen tidak valid') });
+
+export type LabelInput = z.infer<typeof labelSchema>;
+export type UploadDocumentInput = z.infer<typeof uploadDocumentSchema>;

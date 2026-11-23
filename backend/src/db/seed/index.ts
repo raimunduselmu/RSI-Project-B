@@ -5,6 +5,7 @@ import { seedSettings } from './settings.js';
 import { seedWorkflows } from './workflows.js';
 import { seedDemo } from './demo.js';
 import { seedDemoOrganization } from './demoOrganization.js';
+import { seedDemoInventory } from './demoInventory.js';
 
 await poolReady;
 await seedRoles();
@@ -13,6 +14,7 @@ await seedSettings();
 await seedWorkflows();
 await seedDemo();
 await seedDemoOrganization();
+await seedDemoInventory();
 console.log('Seeder selesai');
 await pool.close();
 process.exit(0);

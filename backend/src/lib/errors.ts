@@ -26,10 +26,16 @@ export const ERR = {
   'ERR-FIN-01': { status: 409, message: 'Anggaran tidak mencukupi. Ajukan persetujuan PHT' },
   'ERR-USR-01': { status: 409, message: 'Minimal harus ada satu Admin aktif' },
   'ERR-USR-02': { status: 409, message: 'Anda tidak dapat menonaktifkan akun sendiri' },
+  'ERR-STK-01': { status: 409, message: 'Periode pemeriksaan sudah ditutup' },
+  'ERR-STK-02': { status: 409, message: 'Masih ada periode pemeriksaan yang terbuka. Tutup dulu sebelum membuka yang baru' },
+  'ERR-STK-03': { status: 409, message: 'Masih ada aset yang belum diperiksa atau belum diberi catatan' },
+  'ERR-INC-01': { status: 409, message: 'Laporan yang sudah SELESAI tidak dapat diubah' },
+  'ERR-USE-01': { status: 409, message: 'Laporan pemakaian sudah selesai' },
   'ERR-STS-01': { status: 404, message: 'Kode atau nomor telepon tidak sesuai' },
   'ERR-FILE-01': { status: 422, message: 'File harus PDF/JPG/PNG dengan ukuran maksimal 5 MB' },
   'ERR-RATE-01': { status: 429, message: 'Terlalu banyak permintaan. Coba lagi beberapa saat lagi' },
   'ERR-SYS-01': { status: 503, message: 'Layanan tidak tersedia. Silakan coba lagi' },
+  'ERR-SYS-03': { status: 500, message: 'Gagal memproses file. Silakan coba lagi' },
   'ERR-SYS-02': { status: 501, message: 'Fitur belum diimplementasikan' },
 } as const;
 
