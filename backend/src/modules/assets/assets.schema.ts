@@ -40,7 +40,7 @@ export const updateAssetSchema = base
   .refine((d) => notFuture(d.acquired_date), { path: ['acquired_date'], message: 'Tanggal perolehan tidak boleh di masa depan' });
 
 export const listAssetQuery = z.object({
-  q: z.string().trim().max(100).optional(),
+  q: z.string().trim().min(2, 'Kata kunci minimal 2 karakter').max(100).optional(),
   category_id: z.coerce.number().int().positive().optional(),
   status: z.enum(ASSET_STATUSES).optional(),
   page: z.coerce.number().int().positive().optional(),

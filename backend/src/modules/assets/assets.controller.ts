@@ -35,7 +35,7 @@ export const remove = asyncHandler(async (req, res) => {
   ok(res, null, 'Aset dihapus');
 });
 
-export const histories = asyncHandler(async (req, res) => ok(res, await service.histories(req.params.id)));
+export const histories = asyncHandler(async (req, res) => ok(res, await service.histories(req.params.id, req.query as { date_from?: string; date_to?: string })));
 
 export const photo = asyncHandler(async (req, res) => {
   res.sendFile(resolveFile(await service.photoPath(req.params.id)));

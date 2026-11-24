@@ -1,9 +1,14 @@
+import { AppError } from '../../lib/AppError.js';
 import { query } from '../../lib/sql.js';
 import { monthRangeUtc } from '../../lib/time.js';
 import type { AvailabilityQuery, CalendarQuery } from './schedule.schema.js';
 
 /** Cek bentrok via fn_check_availability (BR-19, BR-22). Publik tidak melihat kode pengajuan orang lain. */
 export async function availability(q: AvailabilityQuery, full: boolean) {
+  if (q.room_id) {
+    const [room] = await query<{ room_id: number }>(`SELECT room_id FROM rooms WHERE room_id = @r`, { r: q.room_id });
+    if (!room) throw new AppError('ERR-DATA-01', 'Ruangan tidak ditemukan');
+  }
   const rows = await query<{ source: string; ref_code: string; start_at: Date; end_at: Date; conflict_on: string }>(
     `SELECT source, ref_code, start_at, end_at, conflict_on
      FROM dbo.fn_check_availability(@room, @assets, @start, @end, NULL) ORDER BY start_at`,

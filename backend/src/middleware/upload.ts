@@ -7,5 +7,5 @@ export const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: UPLOAD.MAX_BYTES },
   fileFilter: (_req, file, cb) =>
-    (UPLOAD.MIME as readonly string[]).includes(file.mimetype) ? cb(null, true) : cb(new AppError('ERR-FILE-01')),
+    (UPLOAD.MIME as readonly string[]).includes(file.mimetype) ? cb(null, true) : cb(new AppError('ERR-VAL-05')),
 });

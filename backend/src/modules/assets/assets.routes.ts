@@ -1,3 +1,4 @@
+import { dateRangeQuery } from '../../lib/dateRange.js';
 import { Router } from 'express';
 import { optionalAuth, requireAuth } from '../../middleware/auth.js';
 import { enforcePasswordChange } from '../../middleware/mustChangePassword.js';
@@ -18,7 +19,7 @@ assetsRoutes.post('/labels', ...authed, requireRole('Sarpras'), validate(labelSc
 
 assetsRoutes.get('/:id', optionalAuth, validate(assetKeyParam, 'params'), c.get); // FSD-2.7 (publik, field terbatas)
 assetsRoutes.get('/:id/photo', validate(assetKeyParam, 'params'), c.photo); // FSD-2.5
-assetsRoutes.get('/:id/histories', ...authed, validate(assetKeyParam, 'params'), c.histories); // FSD-2.8 (pengurus)
+assetsRoutes.get('/:id/histories', ...authed, validate(assetKeyParam, 'params'), validate(dateRangeQuery, 'query'), c.histories); // FSD-2.8 (pengurus)
 assetsRoutes.patch('/:id', ...authed, requireRole('Sarpras'), validate(assetKeyParam, 'params'), upload.single('photo'), validate(updateAssetSchema), c.update); // FSD-2.5
 assetsRoutes.delete('/:id', ...authed, requireRole('Admin'), validate(assetKeyParam, 'params'), c.remove); // FSD-2.5 (soft delete)
 

@@ -1,6 +1,7 @@
 // FSD-2.19 Laporan Inventaris — ringkasan (v_inventory_summary + transaksi) dan ekspor PDF/XLSX (BR-44, BR-45)
 import { AppError } from '../../lib/AppError.js';
 import { writeAudit, ymd } from '../../lib/assetRef.js';
+import { rupiah } from '../../lib/format.js';
 import { buildTablePdf, type PdfColumn } from '../../lib/pdf.js';
 import { query } from '../../lib/sql.js';
 import { todayWib } from '../../lib/time.js';
@@ -205,7 +206,9 @@ export async function exportReport(q: ExportQuery, user: AuthUser, ip?: string) 
   let file: Buffer;
   try {
     if (q.format === 'PDF') {
-      file = Buffer.from(await buildTablePdf({ title, subtitle: sub, columns: cols, rows: r.rows, footnote: 'KMK UNS' }));
+      // Nilai rupiah di PDF ditulis berformat (150.000) tanpa simbol karena judul kolom sudah "Nilai (Rp)"
+      const pdfRows = r.rows.map((x) => (x.acquisition_value == null ? x : { ...x, acquisition_value: rupiah(Number(x.acquisition_value), false) }));
+      file = Buffer.from(await buildTablePdf({ title, subtitle: sub, columns: cols, rows: pdfRows, footnote: 'KMK UNS' }));
     } else {
       file = await buildXlsx(
         [

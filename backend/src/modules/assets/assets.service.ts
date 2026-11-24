@@ -120,19 +120,23 @@ export async function remove(key: string, user: AuthUser, ip?: string) {
   return withTransaction(user, ip, async (tx) => {
     const cur = await query<{ asset_id: string; status: string }>(`SELECT a.asset_id, a.status FROM assets a WHERE ${KEY_WHERE}`, { key }, tx);
     if (!cur[0]) throw new AppError('ERR-DATA-01', 'Aset tidak ditemukan');
-    if (cur[0].status === 'DIPINJAM') throw new AppError('ERR-VAL-01', 'Aset sedang dipinjam dan tidak dapat dihapus');
+    if (cur[0].status === 'DIPINJAM') throw new AppError('ERR-DATA-03', 'Aset sedang dipinjam dan tidak dapat dihapus');
     await query(`UPDATE assets SET is_deleted = 1, updated_at = SYSUTCDATETIME() WHERE asset_id = @id`, { id: cur[0].asset_id }, tx);
   });
 }
 
 /** Riwayat keterlacakan aset, terbaru di atas (FSD-2.8) */
-export async function histories(key: string) {
+export async function histories(key: string, range: { date_from?: string; date_to?: string } = {}) {
   const a = await query<{ asset_id: string }>(`SELECT a.asset_id FROM assets a WHERE ${KEY_WHERE}`, { key });
   if (!a[0]) throw new AppError('ERR-DATA-01', 'Aset tidak ditemukan');
   const rows = await query<Record<string, unknown> & { old_value: string | null; new_value: string | null }>(
     `SELECT history_id, event_type, old_value, new_value, note, actor_name, created_at
-     FROM asset_histories WHERE asset_id = @id ORDER BY created_at DESC`,
-    { id: a[0].asset_id },
+     FROM asset_histories
+     WHERE asset_id = @id
+       AND (@df IS NULL OR CAST(DATEADD(HOUR, 7, created_at) AS date) >= @df)
+       AND (@dt IS NULL OR CAST(DATEADD(HOUR, 7, created_at) AS date) <= @dt)
+     ORDER BY created_at DESC`,
+    { id: a[0].asset_id, df: range.date_from ?? null, dt: range.date_to ?? null },
   );
   return rows.map((r) => ({ ...r, old_value: r.old_value ? JSON.parse(r.old_value) : null, new_value: r.new_value ? JSON.parse(r.new_value) : null }));
 }

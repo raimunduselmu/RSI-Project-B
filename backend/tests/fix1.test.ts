@@ -1,0 +1,20 @@
+import { describe, it, expect } from 'vitest';
+import { pickCode } from '../src/middleware/validate.js';
+import { changePasswordSchema } from '../src/modules/auth/auth.schema.js';
+import { createLoanSchema } from '../src/modules/loans/loans.schema.js';
+import { availabilityQuery } from '../src/modules/schedule/schedule.schema.js';
+import { inventoryReportQuery } from '../src/modules/reports/reports.schema.js';
+import { dateRangeQuery } from '../src/lib/dateRange.js';
+const code = (s: any, v: any) => { const r = s.safeParse(v); return r.success ? 'OK' : pickCode(r.error.issues, v); };
+const base = { borrower_name: 'Budi', borrower_phone: '081234567890', borrower_email: 'b@gmail.com', purpose: 'Latihan', request_type: 'RUANGAN', room_id: 1, start_at: '2027-01-05T02:00:00Z', end_at: '2027-01-05T05:00:00Z' };
+describe('fix error 1', () => {
+  it('password kapital', () => { expect(code(changePasswordSchema, { current_password: 'x', new_password: 'abc12345', confirm_password: 'abc12345' })).toBe('ERR-VAL-06'); });
+  it('konfirmasi', () => { expect(code(changePasswordSchema, { current_password: 'x', new_password: 'Baru-2026', confirm_password: 'Baru-2027' })).toBe('ERR-VAL-07'); });
+  it('loan email kosong 01', () => { expect(code(createLoanSchema, { ...base, borrower_email: '' })).toBe('ERR-VAL-01'); });
+  it('loan email 02', () => { expect(code(createLoanSchema, { ...base, borrower_email: 'budi@' })).toBe('ERR-VAL-02'); });
+  it('loan phone 03', () => { expect(code(createLoanSchema, { ...base, borrower_phone: '12345' })).toBe('ERR-VAL-03'); });
+  it('loan waktu 04', () => { expect(code(createLoanSchema, { ...base, end_at: '2027-01-05T01:00:00Z' })).toBe('ERR-VAL-04'); });
+  it('avail lampau 04', () => { expect(code(availabilityQuery, { room_id: 1, start_at: '2025-01-01T01:00:00Z', end_at: '2025-01-01T02:00:00Z' })).toBe('ERR-VAL-04'); });
+  it('report range 04', () => { expect(code(inventoryReportQuery, { date_from: '2026-11-30', date_to: '2026-08-01' })).toBe('ERR-VAL-04'); });
+  it('range ok', () => { expect(code(dateRangeQuery, { date_from: '2026-08-01', date_to: '2026-11-30' })).toBe('OK'); });
+});

@@ -9,7 +9,7 @@ export const notFound: RequestHandler = (_req, _res, next) => next(new AppError(
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   let e: AppError;
   if (err instanceof AppError) e = err;
-  else if (err instanceof multer.MulterError) e = new AppError('ERR-FILE-01');
+  else if (err instanceof multer.MulterError) e = new AppError('ERR-VAL-05');
   // body JSON rusak (mis. salah ketik true) atau terlalu besar → galat validasi, bukan 503
   else if (err?.type === 'entity.parse.failed') e = new AppError('ERR-VAL-01', 'Format JSON tidak valid. Periksa tanda kutip, koma, dan nilai true/false');
   else if (err?.type === 'entity.too.large') e = new AppError('ERR-VAL-01', 'Data yang dikirim terlalu besar');
@@ -21,11 +21,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     console.error(err);
     e = new AppError('ERR-SYS-01');
   }
+  // Polimorfisme: toResponse() yang dijalankan mengikuti jenis objek (AppError atau ValidationError)
   res.status(e.status).json({
-    status: 'error',
-    error_code: e.code,
-    message: e.message,
-    ...(e.details ? { details: e.details } : {}),
+    ...e.toResponse(),
     ...(!isProd && !(err instanceof AppError) ? { debug: String(err?.message ?? err) } : {}),
   });
 };

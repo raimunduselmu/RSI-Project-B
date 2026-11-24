@@ -5,11 +5,11 @@ export const loginSchema = z.object({
   password: z.string().min(8),
 });
 
-// BR-05: min 8 karakter, ada huruf & angka; tidak boleh sama dengan password lama
+// BR-05: min 8 karakter, ada huruf kapital, huruf kecil & angka; tidak boleh sama dengan password lama
 export const changePasswordSchema = z
   .object({
     current_password: z.string().min(1),
-    new_password: z.string().min(8).regex(/[A-Za-z]/, 'Harus ada huruf').regex(/\d/, 'Harus ada angka'),
+    new_password: z.string().min(8, 'Minimal 8 karakter').regex(/[A-Z]/, 'Harus ada huruf kapital').regex(/[a-z]/, 'Harus ada huruf kecil').regex(/\d/, 'Harus ada angka'),
     confirm_password: z.string(),
   })
   .refine((d) => d.new_password === d.confirm_password, { path: ['confirm_password'], message: 'Konfirmasi tidak sama' })
