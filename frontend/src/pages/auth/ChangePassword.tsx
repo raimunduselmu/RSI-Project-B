@@ -1,9 +1,10 @@
-// SCR-02 Ganti Password (FSD-2.3, BR-05, BR-06)
+// SCR-02 Ganti Password (FSD-2.3, BR-05, BR-06) — Template K
 import { useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { Alert, Button, Card, Input } from '@/components/ui';
+import { AuthLayout } from '@/components/templates';
+import { Alert, Button, Input } from '@/components/ui';
 
 export default function ChangePassword() {
   const { user, refresh } = useAuth();
@@ -29,19 +30,17 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-50 px-4">
-      <Card title="Ganti Password" className="w-full max-w-md">
-        {user?.must_change_password && (
-          <div className="mb-4"><Alert tone="warning">Anda wajib mengganti password sebelum melanjutkan.</Alert></div>
-        )}
-        {error && <div className="mb-4"><Alert tone="error">{error.message}</Alert></div>}
-        <form onSubmit={submit} className="space-y-4">
-          <Input label="Password lama" type="password" value={form.current_password} onChange={set('current_password')} required />
-          <Input label="Password baru" type="password" value={form.new_password} onChange={set('new_password')} required hint="Minimal 8 karakter, mengandung huruf dan angka" error={error?.details?.new_password?.[0]} />
-          <Input label="Ulangi password baru" type="password" value={form.confirm_password} onChange={set('confirm_password')} required error={error?.details?.confirm_password?.[0]} />
-          <Button type="submit" loading={loading} className="w-full">Simpan</Button>
-        </form>
-      </Card>
-    </div>
+    <AuthLayout title="Ganti Password" subtitle="Password baru minimal 8 karakter, mengandung huruf dan angka.">
+      <form onSubmit={submit} className="space-y-4">
+        {user?.must_change_password && <Alert tone="warning">Anda wajib mengganti password sebelum melanjutkan.</Alert>}
+        {error && <Alert tone="error">{error.message}</Alert>}
+        <Input no={1} label="Password lama" type="password" value={form.current_password} onChange={set('current_password')} required />
+        <Input no={2} label="Password baru" type="password" value={form.new_password} onChange={set('new_password')} required error={error?.details?.new_password?.[0]} />
+        <Input no={3} label="Ulangi password baru" type="password" value={form.confirm_password} onChange={set('confirm_password')} required error={error?.details?.confirm_password?.[0]} />
+        <Button type="submit" loading={loading} size="lg" className="w-full">
+          Simpan
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

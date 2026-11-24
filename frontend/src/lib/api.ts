@@ -10,11 +10,11 @@ export class ApiError extends Error {
   }
 }
 
-const BASE = import.meta.env.VITE_API_URL ?? '/api/v1';
+export const BASE = import.meta.env.VITE_API_URL ?? '/api/v1';
 
 type Body = Record<string, unknown> | FormData | undefined;
 
-async function request<T>(method: string, path: string, body?: Body): Promise<T> {
+async function request<T>(method: string, path: string, body?: Body, raw = false): Promise<T> {
   const isForm = body instanceof FormData;
   const res = await fetch(`${BASE}${path}`, {
     method,
@@ -28,11 +28,13 @@ async function request<T>(method: string, path: string, body?: Body): Promise<T>
     if (err.code === 'ERR-AUTH-06') window.dispatchEvent(new Event('kmk:must-change-password'));
     throw err;
   }
-  return json.data as T;
+  return (raw ? json : json.data) as T;
 }
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
+  /** GET daftar berhalaman: kembalikan { data, meta } (total, last_page, ...) */
+  page: <T>(path: string) => request<Paginated<T>>('GET', path, undefined, true),
   post: <T>(path: string, body?: Body) => request<T>('POST', path, body),
   patch: <T>(path: string, body?: Body) => request<T>('PATCH', path, body),
   del: <T>(path: string) => request<T>('DELETE', path),

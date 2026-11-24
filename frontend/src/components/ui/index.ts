@@ -6,3 +6,7 @@ export * from './Table';
 export * from './Modal';
 export * from './Alert';
 export * from './Spinner';
+export * from './Icon';
+export * from './Tabs';
+export * from './Timeline';
+export * from './StatCard';
