@@ -1,6 +1,6 @@
 // SCR-06 Form Aset (Tambah/Ubah) (FSD-2.5) — Template D
 // Data: GET /asset-categories · GET /assets/code-preview · POST /assets · GET/PATCH /assets/:id (multipart, field foto: photo)
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FormGrid, FormPage } from '@/components/templates';
 import { Alert, FileDrop, Input, Select, Textarea, Toggle } from '@/components/ui';
@@ -72,7 +72,7 @@ export default function AssetForm() {
       .catch(() => setPreview(''));
   }, [f.category_id, isEdit]);
 
-  const submit = async (_e: FormEvent) => {
+  const submit = async () => {
     setSaving(true);
     setError(null);
     const fd = new FormData();
