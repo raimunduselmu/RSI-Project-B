@@ -1,22 +1,28 @@
 # Backlog Backend
 
 Fitur yang **sengaja ditunda**. Centang bila sudah dikerjakan.
-Gelombang 1: Aset + Peminjaman · Gelombang 2: Kepengurusan + Parameter Sistem + Iuran Kas · Gelombang 3: Kelola Pengguna + Notifikasi + Keuangan + Dashboard.
+Gelombang 1: Aset + Peminjaman · Gelombang 2: Kepengurusan + Parameter Sistem + Iuran Kas · Gelombang 3: Kelola Pengguna + Notifikasi + Keuangan + Dashboard · Gelombang 4: Inventaris lanjutan.
 
 ## Modul Aset & Peminjaman (lanjutan)
-- [ ] Dokumen aset — unggah/unduh/hapus (FSD-2.16): tabel `asset_documents`, endpoint `/assets/{id}/documents`
-- [ ] Cetak label kode unik PDF (FSD-2.6): `POST /assets/labels` (pdfkit)
+- [x] Dokumen aset — unggah/unduh/hapus (FSD-2.16): tabel `asset_documents`, endpoint `/assets/{id}/documents`
+- [x] Cetak label kode unik PDF (FSD-2.6): `POST /assets/labels` (pdfkit)
 - [ ] Pembayaran/refund peminjaman (FSD-2.34): tabel `loan_payments`, `/loans/{id}/payments`
-- [ ] Lapor pemakaian internal (FSD-2.13): tabel `usage_reports`, `usage_report_items`, `sp_report_usage`
-- [ ] Pemeliharaan (FSD-2.14), Kehilangan & kerusakan (FSD-2.15), Pemeriksaan fisik (FSD-2.17)
-- [ ] Laporan inventaris + ekspor (FSD-2.19)
+- [x] Lapor pemakaian internal (FSD-2.13): tabel `usage_reports`, `usage_report_items`, `sp_report_usage`
+- [x] Pemeliharaan (FSD-2.14), Kehilangan & kerusakan (FSD-2.15), Pemeriksaan fisik (FSD-2.17)
+- [x] Laporan inventaris + ekspor PDF/XLSX (FSD-2.19)
 - [ ] Peminjaman untuk kegiatan `POST /events/{id}/loan-requests` (FSD-2.29) — kolom `event_id` sudah ada, FK ke `events` menyusul
-- [ ] `fn_check_availability` & `v_calendar_events`: tambahkan sumber `usage_reports` (BERLANGSUNG), `liturgy_schedules` (TERBIT), `events` (BR-20)
+- [x] `fn_check_availability` & `v_calendar_events`: sumber `usage_reports` BERLANGSUNG sudah ditambahkan
+- [ ] `fn_check_availability` & `v_calendar_events`: tambahkan `liturgy_schedules` (TERBIT) dan `events` saat modulnya dibuat (BR-20)
 - [ ] FK `assets.donation_id` → `donations` saat modul Donasi dibuat
 
 ## Cek Status publik (FSD-2.46)
 - [ ] Kode INT (intensi), PST (pendampingan), REG (pendaftaran kegiatan) — saat ini hanya PJM
 - [ ] `POST /public/status/cancel` (batalkan pendaftaran kegiatan)
+
+## Gelombang 4 — sisa kecil
+- [ ] Label: belum ada QR/barcode (FSD hanya mewajibkan kode, nama, kategori). Bisa ditambah dengan paket `bwip-js`
+- [ ] `v_donor_transparency` & halaman transparansi (FSD-2.18): menunggu tabel `donations` (modul Donasi, Andra)
+- [ ] Pemakaian internal yang melewati perkiraan selesai belum diingatkan otomatis (sekarang hanya ditandai `is_overdue`)
 
 ## Gelombang 3 (selesai) dan sisanya
 - [x] Kelola Pengguna (FSD-2.3/2.4), Notifikasi aplikasi + email pengurus (FSD-2.21), Kas Masuk/Keluar + Anggaran + alur over-budget (FSD-2.32/2.33), Laporan Keuangan (FSD-2.34), Dashboard (FSD-2.40)

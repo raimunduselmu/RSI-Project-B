@@ -1,9 +1,9 @@
 -- fn_check_availability
--- TSD 5.2 | dipakai sp_submit_loan, sp_approve_loan, GET /availability
+-- TSD 5.2 | dipakai sp_submit_loan, sp_approve_loan, sp_report_usage, GET /availability
 -- Mengembalikan daftar jadwal yang BENTROK. Tidak ada baris = tersedia.
 -- Bentrok bila mulai_A < selesai_B AND selesai_A > mulai_B (BR-19).
--- Sumber pemblokir saat ini: peminjaman DISETUJUI/DIAMBIL.
--- TODO (BACKLOG): tambah usage_reports BERLANGSUNG & liturgy_schedules TERBIT (BR-20) saat tabelnya dibuat.
+-- Sumber pemblokir: peminjaman DISETUJUI/DIAMBIL dan pemakaian internal BERLANGSUNG (BR-20, BR-31).
+-- TODO (BACKLOG): liturgy_schedules TERBIT & events saat tabelnya dibuat.
 CREATE OR ALTER FUNCTION dbo.fn_check_availability (
   @room_id INT,
   @asset_ids NVARCHAR(MAX),          -- JSON array UUID, boleh NULL / '[]'
@@ -27,5 +27,18 @@ RETURN
         SELECT 1 FROM dbo.loan_items li
         JOIN OPENJSON(ISNULL(@asset_ids, N'[]')) j ON TRY_CAST(j.value AS UNIQUEIDENTIFIER) = li.asset_id
         WHERE li.loan_id = lr.loan_id)
+    )
+  UNION ALL
+  SELECT N'PEMAKAIAN_INTERNAL', N'INT-' + LEFT(CONVERT(NVARCHAR(36), ur.report_id), 8), ur.start_at, ur.planned_end_at,
+         CASE WHEN ur.room_id = @room_id THEN N'RUANGAN' ELSE N'ASET' END
+  FROM dbo.usage_reports ur
+  WHERE ur.status = N'BERLANGSUNG'
+    AND ur.start_at < @end_at AND ur.planned_end_at > @start_at
+    AND (
+      (@room_id IS NOT NULL AND ur.room_id = @room_id)
+      OR EXISTS (
+        SELECT 1 FROM dbo.usage_report_items ui
+        JOIN OPENJSON(ISNULL(@asset_ids, N'[]')) j ON TRY_CAST(j.value AS UNIQUEIDENTIFIER) = ui.asset_id
+        WHERE ui.report_id = ur.report_id)
     )
 );

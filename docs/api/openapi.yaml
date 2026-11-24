@@ -1,11 +1,12 @@
 openapi: 3.0.3
 info:
   title: KMK UNS API
-  version: 1.3.0
+  version: 1.4.0
   description: |
     Sesuai TSD v1.1 Bagian 3. Gelombang 1: Auth, Aset, Ruangan, Ketersediaan, Peminjaman, Cek Status.
     Gelombang 2: Kepengurusan (periode, divisi, jabatan, pengurus), Parameter Sistem, Iuran Kas.
     Gelombang 3: Kelola Pengguna, Notifikasi (aplikasi + email pengurus), Kas Masuk/Keluar, Anggaran, Laporan Keuangan, Dashboard.
+    Gelombang 4: Inventaris lanjutan — pemakaian internal, pemeliharaan, kehilangan/kerusakan, dokumen aset, cetak label PDF, pemeriksaan fisik, laporan inventaris + ekspor PDF/XLSX.
     Semua response memakai envelope { status, data, message?, meta? } atau { status:'error', error_code, message, details? }.
 servers:
   - url: /api/v1
@@ -677,3 +678,262 @@ paths:
       summary: Ringkasan per role (FSD-2.40). Bagian yang muncul menyesuaikan role pengguna
       security: [{ cookieAuth: [] }]
       responses: { '200': { description: '{ notifications, my_kas?, sarpras?, keuangan?, admin? }' } }
+  /usage-reports:
+    get:
+      tags: [Pemakaian Internal]
+      summary: 'Daftar laporan pemakaian (FSD-2.13). Sarpras/PHT/Admin semua; pengurus lain milik sendiri'
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: status, in: query, schema: { type: string, enum: [BERLANGSUNG, SELESAI] } }
+        - { name: mine, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { name: q, in: query, schema: { type: string } }
+      responses: { '200': { description: 'OK (meta pagination). is_overdue = melewati perkiraan selesai' } }
+    post:
+      tags: [Pemakaian Internal]
+      summary: 'Lapor pemakaian internal — sp_report_usage (tanpa persetujuan, BR-30/31). Aset → DIGUNAKAN'
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reporter_name, reporter_phone, division, activity_name, start_at, planned_end_at]
+              properties:
+                reporter_name: { type: string }
+                reporter_phone: { type: string, example: '081234567890' }
+                division: { type: string, example: Liturgi }
+                activity_name: { type: string, example: Latihan koor }
+                room_id: { type: integer, nullable: true }
+                asset_ids: { type: array, items: { type: string, format: uuid } }
+                start_at: { type: string, format: date-time, description: 'Boleh mundur maks. 1 jam' }
+                planned_end_at: { type: string, format: date-time }
+      responses: { '201': { description: 'Laporan BERLANGSUNG + items' }, '409': { description: 'ERR-LOAN-01 (details.conflicts) / ERR-LOAN-02' }, '422': { description: 'ERR-VAL-01 / ERR-VAL-04' } }
+  /usage-reports/{id}:
+    get:
+      tags: [Pemakaian Internal]
+      summary: Detail laporan + aset
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+  /usage-reports/{id}/finish:
+    post:
+      tags: [Pemakaian Internal]
+      summary: 'Selesai pemakaian (pelapor, atau Sarpras atas nama pelapor — AF-2). Kondisi BAIK → TERSEDIA, rusak → PEMELIHARAAN'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { items: { type: array, items: { type: object, properties: { asset_id: { type: string, format: uuid }, condition_after: { type: string, enum: [BAIK, RUSAK_RINGAN, RUSAK_BERAT] } } } } } } } } }
+      responses: { '200': { description: 'Laporan SELESAI; suggest_incident = true bila ada aset rusak' }, '409': { description: 'ERR-USE-01 (sudah selesai)' }, '403': { description: ERR-AUTH-03 } }
+  /maintenance-schedules:
+    get:
+      tags: [Pemeliharaan]
+      summary: 'Daftar jadwal pemeliharaan (semua pengurus, FSD-2.14). due_state: TERLAMBAT / SEGERA (≤7 hari) / TERJADWAL / NONAKTIF'
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: asset_id, in: query, schema: { type: string }, description: UUID atau kode aset }
+        - { name: is_active, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { name: due_within_days, in: query, schema: { type: integer } }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Pemeliharaan]
+      summary: 'Tambah jadwal (Sarpras). interval_days kosong → maintenance_default_days kategori (AF-1)'
+      security: [{ cookieAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [asset_id, task_name, next_due_date], properties: { asset_id: { type: string, description: UUID atau kode aset }, task_name: { type: string }, interval_days: { type: integer }, next_due_date: { type: string, example: 2026-12-01 }, reminder_days_before: { type: integer, default: 7 } } } } } }
+      responses: { '201': { description: OK }, '404': { description: ERR-DATA-01 }, '422': { description: ERR-VAL-01 } }
+  /maintenance-schedules/{id}:
+    get:
+      tags: [Pemeliharaan]
+      summary: Detail jadwal
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+    patch:
+      tags: [Pemeliharaan]
+      summary: 'Ubah / nonaktifkan jadwal (Sarpras, AF-2: is_active=false, log tetap ada)'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { task_name: { type: string }, interval_days: { type: integer }, next_due_date: { type: string }, reminder_days_before: { type: integer }, is_active: { type: boolean } } } } } }
+      responses: { '200': { description: OK } }
+  /maintenance-schedules/{id}/logs:
+    get:
+      tags: [Pemeliharaan]
+      summary: Riwayat pelaksanaan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Pemeliharaan]
+      summary: 'Catat pelaksanaan (Sarpras, BR-33). next_due_date = performed_date + interval (BR-32); kondisi aset ikut hasil; riwayat PEMELIHARAAN'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [performed_date, performed_by, result_condition], properties: { performed_date: { type: string, example: 2026-11-23 }, performed_by: { type: string }, result_condition: { type: string, enum: [BAIK, RUSAK_RINGAN, RUSAK_BERAT] }, notes: { type: string } } } } } }
+      responses: { '201': { description: '{ schedule, log_id }' }, '422': { description: ERR-VAL-01 } }
+  /incidents:
+    get:
+      tags: [Kehilangan & Kerusakan]
+      summary: 'Daftar laporan (FSD-2.15). Sarpras/PHT/Admin semua; pengurus lain milik sendiri'
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: status, in: query, schema: { type: string, enum: [DILAPORKAN, DIPROSES, SELESAI] } }
+        - { name: incident_type, in: query, schema: { type: string, enum: [HILANG, RUSAK] } }
+        - { name: open, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { name: asset_id, in: query, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Kehilangan & Kerusakan]
+      summary: 'Lapor kehilangan/kerusakan (semua pengurus). HILANG → aset HILANG, RUSAK → PEMELIHARAAN (trigger, BR-34); Sarpras diberi tahu'
+      security: [{ cookieAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [asset_id, incident_type, occurred_date, description], properties: { asset_id: { type: string, description: UUID atau kode aset }, incident_type: { type: string, enum: [HILANG, RUSAK] }, occurred_date: { type: string, example: 2026-11-20 }, description: { type: string }, responsible_name: { type: string, description: 'Kosong → peminjam/pengguna terakhir (BR-36)' } } } } } }
+      responses: { '201': { description: OK }, '409': { description: 'ERR-DATA-02 (laporan serupa masih terbuka)' }, '422': { description: 'ERR-VAL-01 / ERR-VAL-04 (tanggal di masa depan)' } }
+  /incidents/responsible-suggestion:
+    get:
+      tags: [Kehilangan & Kerusakan]
+      summary: 'Penanggung jawab bawaan: peminjam/pengguna internal terakhir aset (BR-36)'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ name: asset_id, in: query, required: true, schema: { type: string } }]
+      responses: { '200': { description: '{ responsible_name, source, last_used_at }' } }
+  /incidents/{id}:
+    get:
+      tags: [Kehilangan & Kerusakan]
+      summary: Detail laporan
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+    patch:
+      tags: [Kehilangan & Kerusakan]
+      summary: 'Tindak lanjut (Sarpras). SELESAI wajib follow_up, terkunci setelahnya (BR-35). AF-2: asset_status_after=TERSEDIA'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, properties: { status: { type: string, enum: [DIPROSES, SELESAI] }, follow_up: { type: string }, responsible_name: { type: string }, asset_status_after: { type: string, enum: [TERSEDIA, PEMELIHARAAN, HILANG, NONAKTIF] }, asset_condition_after: { type: string, enum: [BAIK, RUSAK_RINGAN, RUSAK_BERAT] } } } } } }
+      responses: { '200': { description: OK }, '409': { description: 'ERR-INC-01 (sudah SELESAI)' }, '403': { description: ERR-AUTH-03 } }
+  /assets/labels:
+    post:
+      tags: [Aset]
+      summary: 'Cetak label kode unik → file PDF (Sarpras, FSD-2.6). Dicatat LABEL_PRINTED per aset (BR-14)'
+      security: [{ cookieAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [asset_ids], properties: { asset_ids: { type: array, items: { type: string }, description: 'UUID atau kode aset, 1–200' }, label_size: { type: string, enum: [kecil, sedang], default: sedang } } } } } }
+      responses: { '200': { description: 'application/pdf (kecil 4×12, sedang 3×8 per A4)', content: { application/pdf: { schema: { type: string, format: binary } } } }, '404': { description: ERR-DATA-01 }, '422': { description: ERR-VAL-01 }, '500': { description: ERR-SYS-03 } }
+  /assets/{id}/documents:
+    get:
+      tags: [Aset]
+      summary: Daftar dokumen aset (semua pengurus, FSD-2.16)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Aset]
+      summary: 'Unggah dokumen (Sarpras). PDF/JPG/PNG ≤ 5 MB, nama file diacak (BR-37/38), dicatat DOCUMENT_UPLOADED'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, doc_type, doc_title]
+              properties:
+                file: { type: string, format: binary }
+                doc_type: { type: string, enum: [NOTA, GARANSI, BERITA_ACARA, FOTO, LAINNYA] }
+                doc_title: { type: string }
+      responses: { '201': { description: OK }, '422': { description: 'ERR-FILE-01 / ERR-VAL-01' }, '500': { description: ERR-SYS-03 } }
+  /assets/{id}/documents/{docId}/download:
+    get:
+      tags: [Aset]
+      summary: Unduh dokumen (terautentikasi, AF-1)
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }, { name: docId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: File }, '404': { description: ERR-DATA-01 } }
+  /assets/{id}/documents/{docId}:
+    delete:
+      tags: [Aset]
+      summary: 'Hapus dokumen (Sarpras, AF-2). File dipindah ke folder _dihapus, dicatat DOCUMENT_DELETED'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/Key' }, { name: docId, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+  /stocktakes:
+    get:
+      tags: [Pemeriksaan Fisik]
+      summary: Daftar periode pemeriksaan + progres (Sarpras, FSD-2.17)
+      security: [{ cookieAuth: [] }]
+      responses: { '200': { description: 'total_items, ditemukan, tidak_ditemukan, belum_diperiksa' } }
+    post:
+      tags: [Pemeriksaan Fisik]
+      summary: 'Buka periode → daftar semua aset aktif (BR-40: hanya satu TERBUKA)'
+      security: [{ cookieAuth: [] }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [period_name], properties: { period_name: { type: string, example: Inventarisasi 2026/2027 }, start_date: { type: string } } } } } }
+      responses: { '201': { description: OK }, '409': { description: 'ERR-STK-02 (masih ada periode terbuka)' } }
+  /stocktakes/{id}:
+    get:
+      tags: [Pemeriksaan Fisik]
+      summary: Detail periode
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: OK }, '404': { description: ERR-DATA-01 } }
+  /stocktakes/{id}/items:
+    get:
+      tags: [Pemeriksaan Fisik]
+      summary: 'Daftar aset dalam periode; q = kode pada label fisik'
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/UuidId' }
+        - { $ref: '#/components/parameters/Page' }
+        - { $ref: '#/components/parameters/PerPage' }
+        - { name: q, in: query, schema: { type: string } }
+        - { name: state, in: query, schema: { type: string, enum: [BELUM, DITEMUKAN, TIDAK_DITEMUKAN] } }
+      responses: { '200': { description: 'recorded_* = data sistem, actual_* = temuan, has_difference' } }
+  /stocktakes/{id}/items/{itemId}:
+    patch:
+      tags: [Pemeriksaan Fisik]
+      summary: 'Catat hasil satu aset. Lokasi/kondisi kosong = sama dengan data. Tidak ditemukan wajib catatan'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }, { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [found], properties: { found: { type: boolean }, actual_location: { type: string }, actual_condition: { type: string, enum: [BAIK, RUSAK_RINGAN, RUSAK_BERAT] }, note: { type: string } } } } } }
+      responses: { '200': { description: 'suggest_incident = true bila tidak ditemukan (AF-1)' }, '409': { description: ERR-STK-01 }, '404': { description: ERR-DATA-01 } }
+  /stocktakes/{id}/items/{itemId}/note:
+    patch:
+      tags: [Pemeriksaan Fisik]
+      summary: 'Beri catatan tanpa memeriksa (BR-41)'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }, { name: itemId, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [note], properties: { note: { type: string } } } } } }
+      responses: { '200': { description: OK }, '409': { description: ERR-STK-01 } }
+  /stocktakes/{id}/close:
+    post:
+      tags: [Pemeriksaan Fisik]
+      summary: 'Tutup periode — sp_close_stocktake: sesuaikan lokasi/kondisi aset, riwayat PEMERIKSAAN, ringkasan selisih'
+      security: [{ cookieAuth: [] }]
+      parameters: [{ $ref: '#/components/parameters/UuidId' }]
+      responses: { '200': { description: '{ period, summary{ditemukan,tidak_ditemukan,selisih_lokasi,selisih_kondisi}, not_found_assets[] }' }, '409': { description: 'ERR-STK-01 / ERR-STK-03 (masih ada aset belum diperiksa)' } }
+  /reports/inventory:
+    get:
+      tags: [Laporan]
+      summary: 'Laporan inventaris / peminjaman / pemeliharaan / insiden (semua pengurus, FSD-2.19)'
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: report_type, in: query, schema: { type: string, enum: [INVENTARIS, PEMINJAMAN, PEMELIHARAAN, INSIDEN], default: INVENTARIS } }
+        - { name: period_id, in: query, schema: { type: integer }, description: 'Periode kepengurusan; default periode AKTIF' }
+        - { name: date_from, in: query, schema: { type: string, example: 2026-07-01 } }
+        - { name: date_to, in: query, schema: { type: string, example: 2026-12-31 } }
+        - { name: category_id, in: query, schema: { type: integer } }
+      responses: { '200': { description: '{ report_type, range, summary, by_category?, rows[] }' }, '422': { description: ERR-VAL-04 } }
+  /reports/inventory/export:
+    get:
+      tags: [Laporan]
+      summary: 'Ekspor PDF/XLSX (Sarpras/Admin, BR-44). Dicatat DATA_EXPORTED (BR-45)'
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - { name: report_type, in: query, schema: { type: string, enum: [INVENTARIS, PEMINJAMAN, PEMELIHARAAN, INSIDEN] } }
+        - { name: format, in: query, schema: { type: string, enum: [PDF, XLSX], default: XLSX } }
+        - { name: period_id, in: query, schema: { type: integer } }
+        - { name: date_from, in: query, schema: { type: string } }
+        - { name: date_to, in: query, schema: { type: string } }
+        - { name: category_id, in: query, schema: { type: integer } }
+      responses: { '200': { description: 'File PDF atau XLSX' }, '403': { description: ERR-AUTH-03 }, '500': { description: ERR-SYS-03 } }

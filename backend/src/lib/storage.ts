@@ -35,3 +35,16 @@ export async function removeFile(relPath: string | null | undefined) {
     /* file sudah tidak ada */
   }
 }
+
+/** Pindahkan file ke folder `_dihapus/` (FSD-2.16 AF-2: keluar dari penyimpanan aktif, tidak langsung dimusnahkan). */
+export async function archiveFile(relPath: string | null | undefined) {
+  if (!relPath || env.STORAGE_DRIVER === 'blob') return;
+  try {
+    const from = resolveFile(relPath);
+    const to = resolveFile(path.posix.join('_dihapus', relPath));
+    await fs.mkdir(path.dirname(to), { recursive: true });
+    await fs.rename(from, to);
+  } catch {
+    /* file sudah tidak ada */
+  }
+}

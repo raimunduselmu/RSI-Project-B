@@ -1,22 +1,28 @@
 import { asyncHandler } from '../../lib/asyncHandler.js';
-import { AppError } from '../../lib/AppError.js';
-// import { ok, created, paginated } from '../../lib/response.js';
-// import * as service from './incidents.service.js';
+import { getPagination } from '../../lib/pagination.js';
+import { created, ok, paginated } from '../../lib/response.js';
+import type { ListIncidentQuery } from './incidents.schema.js';
+import * as service from './incidents.service.js';
 
-/** GET /  —  Daftar insiden (FSD-2.15) */
-export const list = asyncHandler(async (_req, _res) => {
-  // TODO: validasi di incidents.schema.ts, logika di incidents.service.ts, balas dengan ok()/created()
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.15)');
+/** GET /  —  Daftar laporan (FSD-2.15). Sarpras/PHT semua, pengurus lain milik sendiri */
+export const list = asyncHandler(async (req, res) => {
+  const { page, perPage } = getPagination(req);
+  const { rows, total } = await service.list(req.query as unknown as ListIncidentQuery, req.user!, page, perPage);
+  paginated(res, rows, page, perPage, total);
 });
 
-/** POST /  —  Laporkan kerusakan/kehilangan (FSD-2.15) */
-export const create = asyncHandler(async (_req, _res) => {
-  // TODO: validasi di incidents.schema.ts, logika di incidents.service.ts, balas dengan ok()/created()
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.15)');
-});
+/** GET /responsible-suggestion?asset_id=  —  Penanggung jawab bawaan (BR-36) */
+export const getResponsibleSuggestion = asyncHandler(async (req, res) => ok(res, await service.suggestResponsible(String(req.query.asset_id))));
 
-/** PATCH /:id  —  Tindak lanjut insiden (FSD-2.15) */
-export const updateById = asyncHandler(async (_req, _res) => {
-  // TODO: validasi di incidents.schema.ts, logika di incidents.service.ts, balas dengan ok()/created()
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.15)');
-});
+/** POST /  —  Lapor kehilangan/kerusakan (FSD-2.15) */
+export const create = asyncHandler(async (req, res) =>
+  created(res, await service.create(req.body, req.user!, req.ip), 'Laporan tersimpan. Sarpras sudah diberi tahu'),
+);
+
+/** GET /:id */
+export const getById = asyncHandler(async (req, res) => ok(res, await service.get(req.params.id, req.user!)));
+
+/** PATCH /:id  —  Tindak lanjut & ubah status (Sarpras, FSD-2.15) */
+export const updateById = asyncHandler(async (req, res) =>
+  ok(res, await service.update(req.params.id, req.body, req.user!, req.ip), 'Laporan diperbarui'),
+);

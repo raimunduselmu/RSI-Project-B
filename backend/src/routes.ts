@@ -24,6 +24,7 @@ import { settingsRoutes } from './modules/settings/settings.routes.js';
 import { publicRoutes } from './modules/public/public.routes.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes.js';
+import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { requireCronSecret } from './middleware/internalSecret.js';
 import { retryFailedEmails } from './jobs/retryEmail.js';
 import { asyncHandler } from './lib/asyncHandler.js';
@@ -57,6 +58,7 @@ apiRouter.use('/settings', settingsRoutes);
 apiRouter.use('/public', publicRoutes);
 apiRouter.use('/admin', auditRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
+apiRouter.use('/reports', reportsRoutes); // FSD-2.19
 
 // Opsi B: dipanggil cron-job.org setiap menit (FSD-2.21)
 apiRouter.post('/internal/notifications/retry', requireCronSecret, asyncHandler(async (_req, res) => {
