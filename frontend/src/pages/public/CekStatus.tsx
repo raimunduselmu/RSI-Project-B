@@ -1,8 +1,8 @@
-// SCR-43 Cek Status Pengajuan (FSD-2.46)
+// SCR-43 Cek Status Pengajuan (FSD-2.46) — Template H
 import { useState, type FormEvent } from 'react';
 import { api, ApiError } from '@/lib/api';
-import { Alert, Badge, Button, Card, Input } from '@/components/ui';
-import { PageHeader } from '@/components/shared/PageHeader';
+import { Alert, Badge, Button, Input } from '@/components/ui';
+import { PublicFormPage } from '@/components/templates';
 
 interface StatusResult {
   type: string;
@@ -35,30 +35,29 @@ export default function CekStatus() {
   };
 
   return (
-    <div className="mx-auto max-w-lg">
-      <PageHeader title="Cek Status Pengajuan" code="SCR-43" subtitle="Peminjaman, intensi, pendampingan, atau pendaftaran kegiatan" />
-      <Card>
-        <form onSubmit={submit} className="space-y-4">
-          <Input label="Kode lacak" placeholder="PJM-201126-004" value={code} onChange={(e) => setCode(e.target.value)} required />
-          <Input label="Nomor telepon" placeholder="08xxxxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value)} required />
-          <Button type="submit" loading={loading} className="w-full">Cek Status</Button>
-        </form>
-      </Card>
+    <PublicFormPage code="SCR-43" title="Cek Status Pengajuan" subtitle="Peminjaman, intensi, pendampingan, atau pendaftaran kegiatan">
+      <form onSubmit={submit} className="space-y-4">
+        <Input no={1} label="Kode lacak" placeholder="PJM-201126-004" value={code} onChange={(e) => setCode(e.target.value)} required className="font-mono" />
+        <Input no={2} label="Nomor telepon" placeholder="08xxxxxxxxxx" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        <Button type="submit" variant="brand" loading={loading} className="w-full" icon="search">
+          Cek Status
+        </Button>
+      </form>
       {error && <div className="mt-4"><Alert tone="error">{error}</Alert></div>}
       {result && (
-        <Card className="mt-4">
+        <div className="mt-5 rounded-xl border border-slate-900/[0.08] bg-white p-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-sm">{result.code}</span>
+            <span className="font-mono text-sm text-brand-700">{result.code}</span>
             <Badge status={result.status} />
           </div>
-          {result.reject_reason && <p className="mt-3 text-sm text-red-700">Alasan: {result.reject_reason}</p>}
+          {result.reject_reason && <p className="mt-3 text-sm text-rose-600">Alasan: {result.reject_reason}</p>}
           {result.pic_wa_link && (
-            <a href={result.pic_wa_link} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-medium text-brand-600">
+            <a href={result.pic_wa_link} target="_blank" rel="noreferrer" className="mt-3 inline-block font-mono text-xs text-emerald-600 hover:text-ink">
               Hubungi penanggung jawab via WhatsApp →
             </a>
           )}
-        </Card>
+        </div>
       )}
-    </div>
+    </PublicFormPage>
   );
 }

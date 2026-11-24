@@ -8,6 +8,6 @@ export default defineConfig({
   server: {
     port: 5173,
     // Saat dev, /api diteruskan ke backend sehingga cookie tetap same-origin
-    proxy: { '/api': { target: 'http://localhost:4000', changeOrigin: true } },
+    proxy: { '/api': { target: 'http://localhost:3000', changeOrigin: true } },
   },
 });

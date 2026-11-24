@@ -1,8 +1,9 @@
-// SCR-01 Login (FSD-2.1)
+// SCR-01 Login Page (FSD-2.1) — Template K
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { ApiError } from '@/lib/api';
+import { AuthLayout } from '@/components/templates';
 import { Alert, Button, Input } from '@/components/ui';
 
 export default function Login() {
@@ -20,7 +21,7 @@ export default function Login() {
     setLoading(true);
     try {
       const u = await login(username, password);
-      nav(u.must_change_password ? '/ganti-password' : loc.state?.from ?? '/app', { replace: true });
+      nav(u.must_change_password ? '/password/change' : loc.state?.from ?? '/dashboard', { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Gagal terhubung ke server');
     } finally {
@@ -29,20 +30,27 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-brand-50 px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-xl bg-white p-6 shadow">
-        <div>
-          <h1>Masuk</h1>
-          <p className="text-sm text-stone-500">Khusus Admin, pengurus, dan Pastor</p>
-        </div>
+    <AuthLayout title="Masuk Pengurus" subtitle="Gunakan username dan password dari Admin.">
+      <form onSubmit={submit} className="space-y-4">
         {error && <Alert tone="error">{error}</Alert>}
-        <Input label="Username" name="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus />
-        <Input label="Password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        <Button type="submit" loading={loading} className="w-full">Masuk</Button>
-        <p className="text-center text-xs text-stone-500">
-          Lupa password? Hubungi Admin. · <Link to="/" className="text-brand-600">Kembali ke beranda</Link>
+        <Input no={1} label="Username" name="username" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus autoComplete="username" />
+        <Input no={2} label="Password" name="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+        <Button type="submit" loading={loading} size="lg" className="w-full">
+          Masuk
+        </Button>
+        <p className="text-center text-sm text-ink/65">
+          Lupa password? Hubungi Admin{' '}
+          {/* TODO: ganti nomor dari pengaturan sistem (SCR-42) */}
+          <a href="https://wa.me/" target="_blank" rel="noreferrer" className="rounded-md bg-emerald-400/15 px-1.5 py-0.5 font-mono text-[11px] text-emerald-600">
+            wa.me
+          </a>
         </p>
+        <div className="border-t border-slate-900/[0.08] pt-4 text-center">
+          <Link to="/" className="font-mono text-xs text-ink/60 hover:text-ink">
+            ← Kembali ke Beranda
+          </Link>
+        </div>
       </form>
-    </div>
+    </AuthLayout>
   );
 }
