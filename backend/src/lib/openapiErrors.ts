@@ -3,7 +3,7 @@
 // Aturan otomatis per endpoint (response yang sudah ditulis manual di YAML tidak ditimpa):
 //   - semua endpoint            → 503 ERR-SYS-01
 //   - butuh login (security)    → 401 ERR-AUTH-01, 403 ERR-AUTH-03/05/06
-//   - ada body/query/path param → 422 ERR-VAL-01 (+ ERR-FILE-01 bila multipart)
+//   - ada body/query/path param → 422 ERR-VAL-01 (+ ERR-VAL-05 bila multipart)
 //   - path memuat {id}          → 404 ERR-DATA-01
 //   - form publik (rate limit)  → 429 ERR-RATE-01
 // Kode yang disebut di description manual (mis. "ERR-LOAN-01 / ERR-LOAN-03") ikut diberi contoh.
@@ -57,7 +57,7 @@ export function withErrorResponses(spec: Json): Json {
         add(r, '401', ['ERR-AUTH-01']);
         add(r, '403', ['ERR-AUTH-03', 'ERR-AUTH-05', 'ERR-AUTH-06']);
       }
-      if (op.requestBody || params.length) add(r, '422', multipart ? ['ERR-VAL-01', 'ERR-FILE-01'] : ['ERR-VAL-01']);
+      if (op.requestBody || params.length) add(r, '422', multipart ? ['ERR-VAL-01', 'ERR-VAL-05'] : ['ERR-VAL-01']);
       if (path.includes('{')) add(r, '404', ['ERR-DATA-01']);
       if (RATE_LIMITED.has(`${method} ${path}`)) add(r, '429', ['ERR-RATE-01']);
       add(r, '503', ['ERR-SYS-01']);

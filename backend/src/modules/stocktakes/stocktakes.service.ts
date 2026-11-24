@@ -95,8 +95,8 @@ export async function checkItem(periodId: string, itemId: string, input: CheckIt
   await withTransaction(user, ip, (tx) =>
     query(
       `UPDATE i SET found = @f,
-              actual_location = CASE WHEN @f = 1 THEN ISNULL(@loc, a.location_text) END,
-              actual_condition = CASE WHEN @f = 1 THEN ISNULL(@cond, a.asset_condition) END,
+              actual_location = CASE WHEN @f = 1 THEN COALESCE(CAST(@loc AS NVARCHAR(255)), a.location_text) END,
+              actual_condition = CASE WHEN @f = 1 THEN COALESCE(CAST(@cond AS NVARCHAR(20)), a.asset_condition) END,
               note = @note, checked_by = @u, checked_at = SYSUTCDATETIME()
        FROM stocktake_items i JOIN assets a ON a.asset_id = i.asset_id
        JOIN stocktake_periods p ON p.period_id = i.period_id AND p.status = N'TERBUKA'

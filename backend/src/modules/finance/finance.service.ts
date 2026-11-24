@@ -8,9 +8,9 @@ import { isUniqueViolation, query, withTransaction } from '../../lib/sql.js';
 import { todayWib } from '../../lib/time.js';
 import type { AuthUser } from '../../types/express.js';
 import type { CreateBudgetInput, CreateCashInput, ListCashQuery, UpdateBudgetInput } from './finance.schema.js';
+import { rupiah } from '../../lib/format.js';
 
 const ymd = (v: unknown) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
-const rupiah = (n: number) => `Rp${Math.round(n).toLocaleString('id-ID')}`;
 
 async function activePeriodId() {
   const rows = await query<{ period_id: number }>(`SELECT TOP 1 period_id FROM periods WHERE status = N'AKTIF' ORDER BY start_date DESC`);

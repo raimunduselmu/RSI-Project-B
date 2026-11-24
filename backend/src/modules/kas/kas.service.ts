@@ -11,6 +11,7 @@ import { todayWib } from '../../lib/time.js';
 import { fillTemplate, waLink } from '../../lib/waLink.js';
 import type { AuthUser } from '../../types/express.js';
 import type { ListPaymentQuery, SubmitPaymentInput } from './kas.schema.js';
+import { rupiah } from '../../lib/format.js';
 
 const KEY_WHERE = `(kp.payment_id = TRY_CAST(@key AS UNIQUEIDENTIFIER) OR kp.payment_code = @key)`;
 const VIEW_ROLES: RoleName[] = ['Admin', 'Bendahara', 'PHT'];
@@ -24,7 +25,6 @@ const monthLabel = (v: unknown) => {
 const hasAny = (user: AuthUser, roles: RoleName[]) => user.roles.some((r) => roles.includes(r));
 
 
-const rupiah = (n: number) => `Rp${Math.round(n).toLocaleString('id-ID')}`;
 
 /* ---------------- Tagihan bulanan (BR-120) ---------------- */
 /** Bentuk/rapikan tagihan bulanan. Tidak melempar galat bila tarif belum diatur atau belum ada periode AKTIF. */
@@ -144,7 +144,7 @@ export async function submitPayment(input: SubmitPaymentInput, proofPath: string
     }
     await notifyRoles(
       ['Bendahara', 'PHT'],
-      { type: 'KAS_SUBMITTED', title: `Pembayaran iuran ${String(output.payment_code)} menunggu verifikasi`, message: `${user.username} mengajukan iuran kas ${Number(output.months)} bulan (${rupiah(Number(output.total_amount))}).`, relatedId: String(output.payment_id) },
+      { type: 'KAS_SUBMITTED', title: `Pembayaran iuran ${String(output.payment_code)} menunggu verifikasi`, message: `${user.username} mengajukan iuran kas ${Number(output.months)} bulan (${rupiah(String(output.total_amount))}).`, relatedId: String(output.payment_id) },
       user.id,
     );
     return {

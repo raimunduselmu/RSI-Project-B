@@ -1,6 +1,6 @@
 // FSD-2.10, 2.11, 2.12 — proses inti di stored procedure (TSD 5.1), baca data dengan query berparameter
 import { env } from '../../config/env.js';
-import { AppError } from '../../lib/AppError.js';
+import { AppError, ValidationError } from '../../lib/AppError.js';
 import { loanDecision, loanSubmitted } from '../../lib/emailTemplates.js';
 import type { ErrorCode } from '../../lib/errors.js';
 import { notifyRoles, sendEmailLogged } from '../../lib/notify.js';
@@ -186,6 +186,16 @@ export async function pickup(key: string, input: PickupInput, user: AuthUser, ip
 
 export async function returnLoan(key: string, input: ReturnInput, user: AuthUser, ip?: string) {
   const loanId = await resolveId(key);
+  // BR-25: setiap aset yang dipinjam wajib dicatat kondisinya saat kembali (hanya bila sudah DIAMBIL)
+  const items = await query<{ asset_id: string; status: string }>(
+    `SELECT li.asset_id, lr.status FROM loan_items li JOIN loan_requests lr ON lr.loan_id = li.loan_id WHERE li.loan_id = @id`,
+    { id: loanId },
+  );
+  if (items.length && items[0].status === 'DIAMBIL') {
+    const given = new Set((input.conditions ?? []).map((c) => c.asset_id.toUpperCase()));
+    const missing = items.filter((i) => !given.has(i.asset_id.toUpperCase()));
+    if (missing.length) throw new ValidationError({ conditions: ['Kondisi setiap aset wajib diisi saat pengembalian'] });
+  }
   const { output } = await callProcedure(
     'sp_return_loan',
     {

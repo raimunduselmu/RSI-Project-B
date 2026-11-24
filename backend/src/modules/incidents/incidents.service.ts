@@ -121,7 +121,7 @@ export async function update(id: string, input: UpdateIncidentInput, user: AuthU
     if (input.status === 'SELESAI' && (input.asset_status_after || input.asset_condition_after)) {
       // Perubahan aset dicatat trg_asset_history (UBAH_STATUS / UBAH_KONDISI)
       await query(
-        `UPDATE assets SET status = ISNULL(@st, status), asset_condition = ISNULL(@co, asset_condition), updated_at = SYSUTCDATETIME()
+        `UPDATE assets SET status = COALESCE(CAST(@st AS NVARCHAR(20)), status), asset_condition = COALESCE(CAST(@co AS NVARCHAR(20)), asset_condition), updated_at = SYSUTCDATETIME()
          WHERE asset_id = @a`,
         { st: input.asset_status_after ?? null, co: input.asset_condition_after ?? null, a: cur.asset_id },
         tx,

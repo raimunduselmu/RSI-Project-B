@@ -1,5 +1,6 @@
 // FSD-2.32 Kas Masuk/Keluar · FSD-2.33 Anggaran · FSD-2.34 Laporan Keuangan
 import { z } from 'zod';
+import { checkDateRange } from '../../lib/dateRange.js';
 
 const emptyToUndef = (v: unknown) => (v === '' || v === null ? undefined : v);
 const ymdStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Format tanggal YYYY-MM-DD');
@@ -42,7 +43,9 @@ export const updateBudgetSchema = z
   .object({ pos_name: z.string().trim().min(2).max(150).optional(), planned_amount: amount.optional() })
   .refine((d) => Object.keys(d).length > 0, { message: 'Tidak ada data yang diubah' });
 
-export const reportQuery = z.object({ period_id: z.coerce.number().int().positive().optional() });
+export const reportQuery = z
+  .object({ period_id: z.coerce.number().int().positive().optional(), date_from: ymdStr.optional(), date_to: ymdStr.optional() })
+  .superRefine(checkDateRange);
 
 export type ListCashQuery = z.infer<typeof listCashQuery>;
 export type CreateCashInput = z.infer<typeof createCashSchema>;

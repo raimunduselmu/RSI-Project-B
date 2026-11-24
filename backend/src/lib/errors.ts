@@ -1,8 +1,12 @@
 // Katalog kode galat dari FSD Bagian 6 (Error Handling). Tambahkan bila perlu.
 export const ERR = {
   'ERR-VAL-01': { status: 422, message: 'Data yang dikirim tidak valid' },
+  'ERR-VAL-02': { status: 422, message: 'Format email tidak valid' },
   'ERR-VAL-03': { status: 422, message: 'Masukkan nomor telepon yang valid (contoh: 08123456789)' },
   'ERR-VAL-04': { status: 422, message: 'Waktu selesai harus setelah waktu mulai dan waktu mulai tidak boleh lewat' },
+  'ERR-VAL-05': { status: 422, message: 'File harus PDF/JPG/PNG dengan ukuran maksimal 5 MB' },
+  'ERR-VAL-06': { status: 422, message: 'Password minimal 8 karakter dengan 1 huruf kapital dan 1 angka' },
+  'ERR-VAL-07': { status: 422, message: 'Konfirmasi password tidak sama' },
   'ERR-VAL-08': { status: 422, message: 'Nominal harus lebih dari 0' },
   'ERR-AUTH-01': { status: 401, message: 'Anda harus login untuk mengakses halaman ini' },
   'ERR-AUTH-02': { status: 401, message: 'Username atau password tidak valid' },
@@ -13,6 +17,7 @@ export const ERR = {
   'ERR-LOCK-01': { status: 403, message: 'Akun dikunci. Coba lagi dalam 15 menit' },
   'ERR-DATA-01': { status: 404, message: 'Data yang diminta tidak ditemukan' },
   'ERR-DATA-02': { status: 409, message: 'Data sudah terdaftar' },
+  'ERR-DATA-03': { status: 409, message: 'Data sedang digunakan sehingga tidak dapat dihapus' },
   'ERR-DATA-04': { status: 409, message: 'Data periode yang sudah diarsipkan tidak dapat diubah' },
   'ERR-LOAN-01': { status: 409, message: 'Jadwal bentrok dengan kegiatan lain. Pilih waktu lain' },
   'ERR-LOAN-02': { status: 409, message: 'Aset tidak tersedia untuk dipinjam' },
@@ -32,7 +37,6 @@ export const ERR = {
   'ERR-INC-01': { status: 409, message: 'Laporan yang sudah SELESAI tidak dapat diubah' },
   'ERR-USE-01': { status: 409, message: 'Laporan pemakaian sudah selesai' },
   'ERR-STS-01': { status: 404, message: 'Kode atau nomor telepon tidak sesuai' },
-  'ERR-FILE-01': { status: 422, message: 'File harus PDF/JPG/PNG dengan ukuran maksimal 5 MB' },
   'ERR-RATE-01': { status: 429, message: 'Terlalu banyak permintaan. Coba lagi beberapa saat lagi' },
   'ERR-SYS-01': { status: 503, message: 'Layanan tidak tersedia. Silakan coba lagi' },
   'ERR-SYS-03': { status: 500, message: 'Gagal memproses file. Silakan coba lagi' },
