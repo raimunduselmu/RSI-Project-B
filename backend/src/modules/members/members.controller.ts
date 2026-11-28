@@ -28,14 +28,37 @@ export const list = asyncHandler(async (req, res) => {
   );
 });
 
+
 /** POST /members — FSD-2.23 */
-export const create = asyncHandler(async (_req, _res) => {
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.23)');
+export const create = asyncHandler(async (req, res) => {
+  const member = await service.createMember(
+    req.body,
+    req.user!,
+    req.ip,
+  );
+
+  return created(
+    res,
+    member,
+    'Data umat berhasil ditambahkan',
+  );
 });
 
-/** GET /members/:id — FSD-2.23 */
-export const getById = asyncHandler(async (_req, _res) => {
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.23)');
+// ==================================================
+// FSD-2.23: Detail Data Umat
+// GET /members/:id
+// ==================================================
+
+export const getById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const member = await service.getMemberById(id);
+
+  return ok(
+    res,
+    member,
+    'Detail umat berhasil diperoleh',
+  );
 });
 
 /** PATCH /members/:id — FSD-2.23 */

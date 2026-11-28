@@ -10,7 +10,13 @@ import { enforcePasswordChange } from '../../middleware/mustChangePassword.js';
 import { requireRole } from '../../middleware/requireRole.js';
 import { validate } from '../../middleware/validate.js';
 import * as c from './members.controller.js';
-import { listMembersQuerySchema } from './members.schema.js';
+
+// FSD-2.23: Schema validasi endpoint members
+import {
+  idParam,
+  listMembersQuerySchema,
+  createMemberSchema,
+} from './members.schema.js';
 
 export const membersRoutes = Router();
 
@@ -28,19 +34,24 @@ membersRoutes.get(
   c.list,
 );
 
-// FSD-2.23: Tambah umat
+
+ // FSD-2.23: Tambah umat
+ // Actor: Admin, PHT, Pastor
 membersRoutes.post(
   '/',
   ...authed,
   requireRole('Admin', 'PHT', 'Pastor'),
+  validate(createMemberSchema, 'body'),
   c.create,
 );
 
-// FSD-2.23: Detail umat
+// FSD-2.23: Detail Data Umat
+// BR-57: Data lengkap hanya untuk Admin, PHT, dan Pastor
 membersRoutes.get(
   '/:id',
   ...authed,
   requireRole('Admin', 'PHT', 'Pastor'),
+  validate(idParam, 'params'),
   c.getById,
 );
 
