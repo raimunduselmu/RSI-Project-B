@@ -1,4 +1,6 @@
 {
   "regions": ["fra1"],
+  "buildCommand": "mkdir -p public && echo ok > public/health.txt",
+  "outputDirectory": "public",
   "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }

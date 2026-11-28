@@ -2,7 +2,7 @@ import { asyncHandler } from '../../lib/asyncHandler.js';
 import { AppError } from '../../lib/AppError.js';
 import { getPagination } from '../../lib/pagination.js';
 import { created, ok, paginated } from '../../lib/response.js';
-import { resolveFile, saveFile } from '../../lib/storage.js';
+import { saveFile, sendStoredFile } from '../../lib/storage.js';
 import type { ListPaymentQuery } from './kas.schema.js';
 import * as service from './kas.service.js';
 
@@ -31,7 +31,7 @@ export const getPaymentsById = asyncHandler(async (req, res) => ok(res, await se
 
 /** GET /payments/:id/proof — pratinjau/unduh bukti (FSD-2.44) */
 export const getPaymentsByIdProof = asyncHandler(async (req, res) => {
-  res.sendFile(resolveFile(await service.proofPath(req.params.id, req.user!)));
+  await sendStoredFile(res, await service.proofPath(req.params.id, req.user!));
 });
 
 /** POST /payments/:id/approve — bulan LUNAS + Kas Masuk otomatis (FSD-2.44) */

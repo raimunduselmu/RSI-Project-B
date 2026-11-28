@@ -2,7 +2,7 @@ import { AppError } from '../../lib/AppError.js';
 import { asyncHandler } from '../../lib/asyncHandler.js';
 import { getPagination } from '../../lib/pagination.js';
 import { created, ok, paginated } from '../../lib/response.js';
-import { resolveFile, saveFile } from '../../lib/storage.js';
+import { saveFile, sendStoredFile } from '../../lib/storage.js';
 import * as extras from './asset-extras.service.js';
 import * as service from './assets.service.js';
 import type { ListAssetQuery } from './assets.schema.js';
@@ -38,7 +38,7 @@ export const remove = asyncHandler(async (req, res) => {
 export const histories = asyncHandler(async (req, res) => ok(res, await service.histories(req.params.id, req.query as { date_from?: string; date_to?: string })));
 
 export const photo = asyncHandler(async (req, res) => {
-  res.sendFile(resolveFile(await service.photoPath(req.params.id)));
+  await sendStoredFile(res, await service.photoPath(req.params.id));
 });
 
 /* ---------- Gelombang 4: label (FSD-2.6) & dokumen aset (FSD-2.16) ---------- */
@@ -73,7 +73,7 @@ export const downloadDocument = asyncHandler(async (req, res) => {
   const f = await extras.documentFile(req.params.id, req.params.docId);
   res.setHeader('Content-Type', f.mime);
   res.setHeader('Content-Disposition', `attachment; filename="${f.filename}"`);
-  res.sendFile(resolveFile(f.path));
+  await sendStoredFile(res, f.path);
 });
 
 /** DELETE /:id/documents/:docId  —  Hapus dokumen (FSD-2.16 AF-2) */

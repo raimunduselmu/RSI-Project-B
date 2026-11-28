@@ -1,7 +1,7 @@
 import { asyncHandler } from '../../lib/asyncHandler.js';
 import { getPagination } from '../../lib/pagination.js';
 import { created, ok, paginated } from '../../lib/response.js';
-import { resolveFile, saveFile } from '../../lib/storage.js';
+import { saveFile, sendStoredFile } from '../../lib/storage.js';
 import type { ListCashQuery } from './finance.schema.js';
 import * as service from './finance.service.js';
 
@@ -24,7 +24,7 @@ export const getCashTransactionsById = asyncHandler(async (req, res) => ok(res, 
 
 /** GET /cash-transactions/:id/proof */
 export const getCashTransactionsByIdProof = asyncHandler(async (req, res) => {
-  res.sendFile(resolveFile(await service.cashProofPath(req.params.id)));
+  await sendStoredFile(res, await service.cashProofPath(req.params.id));
 });
 
 /** POST /cash-transactions/:id/approve  —  PHT menyetujui over-budget (FSD-2.33 AF-1) */

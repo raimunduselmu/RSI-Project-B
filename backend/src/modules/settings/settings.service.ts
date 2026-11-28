@@ -3,7 +3,7 @@ import type { RoleName } from '../../config/constants.js';
 import { AppError } from '../../lib/AppError.js';
 import { normalizePhone, PHONE_REGEX } from '../../lib/phone.js';
 import { query, withTransaction } from '../../lib/sql.js';
-import { removeFile, resolveFile } from '../../lib/storage.js';
+import { removeFile } from '../../lib/storage.js';
 import { fillTemplate, waLink } from '../../lib/waLink.js';
 import type { AuthUser } from '../../types/express.js';
 import { BENDAHARA_KEYS, TEMPLATE_PLACEHOLDERS, ZERO_ALLOWED } from './settings.schema.js';
@@ -133,5 +133,5 @@ export async function publicSettings() {
 export async function qrisImagePath() {
   const r = (await rows(`WHERE s.setting_key = N'QRIS_IMAGE'`))[0];
   if (!r?.setting_value) throw new AppError('ERR-DATA-01', 'Gambar QRIS belum diatur');
-  return resolveFile(r.setting_value);
+  return r.setting_value as string;
 }
