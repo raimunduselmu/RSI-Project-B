@@ -937,3 +937,93 @@ paths:
         - { name: date_to, in: query, schema: { type: string } }
         - { name: category_id, in: query, schema: { type: integer } }
       responses: { '200': { description: 'File PDF atau XLSX' }, '403': { description: ERR-AUTH-03 }, '500': { description: ERR-SYS-03 } }
+  /members:
+    get:
+      tags: [Keumatan]
+      summary: Daftar umat (FSD-2.23)
+      description: >
+        Menampilkan daftar umat dengan pencarian nama/NIM-NIP,
+        filter kategori dan status, serta paginasi.
+        Data umat bersifat sensitif dan hanya dapat diakses
+        oleh Admin, PHT, dan Pastor.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Pencarian berdasarkan nama atau NIM/NIP.
+
+        - name: member_category
+          in: query
+          schema:
+            type: string
+            enum: [MAHASISWA, DOSEN, STAF, ALUMNI]
+
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [AKTIF, NONAKTIF, ALUMNI]
+
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+
+      responses:
+        '200':
+          description: Daftar umat berhasil diambil.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        member_id:
+                          type: string
+                          format: uuid
+                        full_name:
+                          type: string
+                        member_category:
+                          type: string
+                        nim_nip:
+                          type: string
+                          nullable: true
+                        status:
+                          type: string
+                        consent_given:
+                          type: boolean
+                        show_in_directory:
+                          type: boolean
+                        entry_year:
+                          type: integer
+                          nullable: true
+                  meta:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                      last_page:
+                        type: integer
+
+        '401':
+          description: ERR-AUTH-01 — Belum login.
+
+        '403':
+          description: ERR-AUTH-03 — Role tidak berwenang.
+
+        '422':
+          description: ERR-VAL-01 — Query tidak valid.
