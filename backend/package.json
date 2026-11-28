@@ -16,6 +16,7 @@
     "db:create": "tsx src/db/scripts/create-db.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:sql": "tsx src/db/scripts/apply-migrations.ts",
     "db:objects": "tsx src/db/scripts/apply-objects.ts",
     "db:seed": "tsx src/db/seed/index.ts",
     "db:setup": "npm run db:create && npm run db:migrate && npm run db:objects && npm run db:seed",

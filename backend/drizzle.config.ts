@@ -1,4 +1,9 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import path from 'node:path';
+
+// Sama dengan src/config/env.ts: .env root repo dulu, lalu backend/.env
+config({ path: path.resolve(process.cwd(), '../.env') });
+config();
 import { defineConfig } from 'drizzle-kit';
 
 export default defineConfig({
