@@ -10,3 +10,5 @@ export * from './events.js';
 export * from './finance.js';
 export * from './documents.js';
 export * from './workflow.js';
+export * from './member-records.js';
+export * from './sacraments.js';

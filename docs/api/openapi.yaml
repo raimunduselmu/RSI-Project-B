@@ -969,6 +969,14 @@ paths:
             type: string
             enum: [AKTIF, NONAKTIF, ALUMNI]
 
+        - name: entry_year
+          in: query
+          description: Filter periode berdasarkan tahun masuk umat (TSD Table 27).
+          schema:
+            type: integer
+            minimum: 1900
+            maximum: 2100
+
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PerPage'
 
@@ -1027,3 +1035,277 @@ paths:
 
         '422':
           description: ERR-VAL-01 — Query tidak valid.
+    post:
+      tags: [Keumatan]
+      summary: Tambah umat (FSD-2.23)
+      description: Persetujuan pengelolaan data wajib diberikan sebelum data pribadi disimpan (BR-114).
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [full_name, member_category, consent_given]
+              properties:
+                full_name: { type: string, maxLength: 100 }
+                member_category: { type: string, enum: [MAHASISWA, DOSEN, STAF, ALUMNI] }
+                nim_nip: { type: string, nullable: true, maxLength: 30 }
+                phone: { type: string, nullable: true, maxLength: 20 }
+                email: { type: string, format: email, nullable: true, maxLength: 150 }
+                faculty: { type: string, nullable: true, maxLength: 100 }
+                entry_year: { type: integer, minimum: 1900, maximum: 2100 }
+                status: { type: string, enum: [AKTIF, NONAKTIF, ALUMNI], default: AKTIF }
+                consent_given: { type: boolean, enum: [true] }
+                show_in_directory: { type: boolean, default: false }
+      responses:
+        '201': { description: Data umat berhasil ditambahkan. }
+        '401': { description: ERR-AUTH-01 — Belum login. }
+        '403': { description: ERR-AUTH-03 — Role tidak berwenang. }
+        '409': { description: ERR-DATA-02 — NIM/NIP atau email sudah terdaftar. }
+        '422': { description: ERR-VAL-01 — Input atau consent tidak valid. }
+  /members/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Keumatan]
+      summary: Detail umat (FSD-2.23)
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200': { description: Detail umat berhasil diperoleh. }
+        '401': { description: ERR-AUTH-01 — Belum login. }
+        '403': { description: ERR-AUTH-03 — Role tidak berwenang. }
+        '404': { description: ERR-DATA-01 — Data umat tidak ditemukan. }
+    patch:
+      tags: [Keumatan]
+      summary: Ubah profil dan persetujuan umat (FSD-2.23)
+      description: Field yang tidak dikirim tidak diubah. Penarikan consent otomatis menyembunyikan direktori dan menonaktifkan umat (BR-114).
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              additionalProperties: false
+              properties:
+                full_name: { type: string, minLength: 1, maxLength: 100 }
+                member_category: { type: string, enum: [MAHASISWA, DOSEN, STAF, ALUMNI] }
+                nim_nip: { type: string, nullable: true, maxLength: 30 }
+                phone: { type: string, nullable: true, maxLength: 20 }
+                email: { type: string, format: email, nullable: true, maxLength: 150 }
+                faculty: { type: string, nullable: true, maxLength: 100 }
+                entry_year: { type: integer, nullable: true, minimum: 1900, maximum: 2100 }
+                consent_given: { type: boolean }
+                show_in_directory: { type: boolean }
+      responses:
+        '200': { description: Data umat berhasil diperbarui. }
+        '401': { description: ERR-AUTH-01 — Belum login. }
+        '403': { description: ERR-AUTH-03 — Role tidak berwenang. }
+        '404': { description: ERR-DATA-01 — Data umat tidak ditemukan. }
+        '409': { description: ERR-DATA-02 — NIM/NIP atau email sudah terdaftar. }
+        '422': { description: ERR-VAL-01 — Input tidak valid. }
+    delete:
+      tags: [Keumatan]
+      summary: Soft-delete data umat (TSD, Admin only)
+      description: Tidak menghapus baris secara permanen. Record ditandai is_deleted=true dan disembunyikan dari direktori serta endpoint daftar/detail.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200': { description: Data umat berhasil di-soft-delete. }
+        '401': { description: ERR-AUTH-01 — Belum login. }
+        '403': { description: ERR-AUTH-03 — Hanya Admin. }
+        '404': { description: ERR-DATA-01 — Data umat tidak ditemukan. }
+  /members/{id}/status:
+    patch:
+      tags: [Keumatan]
+      summary: Ubah status keaktifan umat (FSD-2.23 AF-1)
+      description: Perubahan status wajib memiliki alasan dan dicatat bersama waktu perubahan pada audit trail.
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, reason]
+              additionalProperties: false
+              properties:
+                status: { type: string, enum: [AKTIF, NONAKTIF, ALUMNI] }
+                reason: { type: string, minLength: 1, maxLength: 255 }
+      responses:
+        '200': { description: Status umat berhasil diperbarui. }
+        '401': { description: ERR-AUTH-01 — Belum login. }
+        '403': { description: ERR-AUTH-03 — Role tidak berwenang. }
+        '404': { description: ERR-DATA-01 — Data umat tidak ditemukan. }
+        '422': { description: ERR-VAL-01 — Status atau alasan tidak valid. }
+  /members/{id}/records:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Keumatan]
+      summary: Riwayat pelayanan, sakramen, dan katekese umat (FSD-2.24)
+      description: >
+        Menggabungkan riwayat dari member_records dan sacraments,
+        diurutkan dari tanggal terbaru. Filter period_id berlaku
+        untuk pelayanan dan katekese. Tabel sakramen tidak memiliki
+        period_id menurut TSD Table 29.
+
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+
+      parameters:
+        - name: record_type
+          in: query
+          schema:
+            type: string
+            enum: [PELAYANAN, SAKRAMEN, KATEKESE]
+
+        - name: period_id
+          in: query
+          description: Filter periode untuk riwayat pelayanan dan katekese.
+          schema:
+            type: integer
+            minimum: 1
+
+      responses:
+        '200':
+          description: Riwayat umat berhasil diperoleh.
+
+        '401':
+          description: ERR-AUTH-01 — Belum login.
+
+        '403':
+          description: ERR-AUTH-03 — Role tidak berwenang.
+
+        '404':
+          description: ERR-DATA-01 — Data umat tidak ditemukan.
+
+        '422':
+          description: ERR-VAL-01 — Filter tidak valid.
+
+    post:
+      tags: [Keumatan]
+      summary: Tambah riwayat umat (FSD-2.24)
+      description: >
+        Penambahan bersifat append-only.
+        PELAYANAN dan KATEKESE disimpan ke member_records.
+        SAKRAMEN disimpan ke sacraments.
+        Koreksi pelayanan/katekese memakai corrects_record_id
+        dan catatan baru.
+
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required:
+                    - record_type
+                    - title
+                    - record_date
+                    - period_id
+                  additionalProperties: false
+                  properties:
+                    record_type:
+                      type: string
+                      enum: [PELAYANAN, KATEKESE]
+
+                    title:
+                      type: string
+                      minLength: 1
+                      maxLength: 150
+
+                    record_date:
+                      type: string
+                      format: date
+
+                    period_id:
+                      type: integer
+                      minimum: 1
+
+                    note:
+                      type: string
+                      nullable: true
+                      maxLength: 255
+
+                    corrects_record_id:
+                      type: string
+                      format: uuid
+
+                - type: object
+                  required:
+                    - record_type
+                    - title
+                    - record_date
+                  additionalProperties: false
+                  properties:
+                    record_type:
+                      type: string
+                      enum: [SAKRAMEN]
+
+                    title:
+                      type: string
+                      minLength: 1
+                      maxLength: 30
+                      description: Dipetakan ke sacrament_type pada TSD Table 29.
+
+                    record_date:
+                      type: string
+                      format: date
+
+                    place:
+                      type: string
+                      nullable: true
+                      maxLength: 150
+
+                    note:
+                      type: string
+                      nullable: true
+                      maxLength: 255
+
+      responses:
+        '201':
+          description: Riwayat berhasil ditambahkan dan dicatat pada audit trail.
+
+        '401':
+          description: ERR-AUTH-01 — Belum login.
+
+        '403':
+          description: ERR-AUTH-03 — Role tidak berwenang.
+
+        '404':
+          description: ERR-DATA-01 — Umat, periode, atau riwayat koreksi tidak ditemukan.
+
+        '422':
+          description: ERR-VAL-01 — Input tidak valid; ERR-VAL-04 — Tanggal riwayat di masa depan.

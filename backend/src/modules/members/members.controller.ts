@@ -1,23 +1,42 @@
-// FSD-2.23: Controller modul Keumatan
-// Controller hanya menangani request, memanggil service,
-// dan membentuk response sesuai TSD 3.1.
+
+// ==================================================
+// FSD-2.23 & FSD-2.24: Controller modul Keumatan
+// TSD 3.1: Respons API { status, data, message, meta }
+//
+// Controller bertanggung jawab menangani request,
+// meneruskan proses ke service, dan mengirim respons.
+// ==================================================
 
 import { asyncHandler } from '../../lib/asyncHandler.js';
-import { AppError } from '../../lib/AppError.js';
 import { created, ok, paginated } from '../../lib/response.js';
-import type { ListMembersQuery } from './members.schema.js';
-import * as service from './members.service.js';
+
+import type {
+  ListMembersQuery,
+  UpdateMemberInput,
+  UpdateMemberStatusInput,
+} from './members.schema.js';
+
+import * as membersService from './members.service.js';
+
+import type {
+  ListMemberRecordsQuery,
+  CreateMemberRecordInput,
+} from './member-records.schema.js';
+
+import * as recordsService from './member-records.service.js';
+
+// ==================================================
+// FSD-2.23: Manajemen Data Umat
+// ==================================================
 
 /**
  * GET /members
- *
- * FSD-2.23:
- * Daftar umat, pencarian, filter, dan paginasi.
+ * Menampilkan daftar umat dengan pencarian,
+ * filter, dan paginasi.
  */
 export const list = asyncHandler(async (req, res) => {
   const filters = req.query as unknown as ListMembersQuery;
-
-  const result = await service.listMembers(filters);
+  const result = await membersService.listMembers(filters);
 
   return paginated(
     res,
@@ -28,10 +47,12 @@ export const list = asyncHandler(async (req, res) => {
   );
 });
 
-
-/** POST /members — FSD-2.23 */
+/**
+ * POST /members
+ * Menambahkan data umat setelah persetujuan consent.
+ */
 export const create = asyncHandler(async (req, res) => {
-  const member = await service.createMember(
+  const member = await membersService.createMember(
     req.body,
     req.user!,
     req.ip,
@@ -44,15 +65,12 @@ export const create = asyncHandler(async (req, res) => {
   );
 });
 
-// ==================================================
-// FSD-2.23: Detail Data Umat
-// GET /members/:id
-// ==================================================
-
+/**
+ * GET /members/:id
+ * Menampilkan detail data umat.
+ */
 export const getById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  const member = await service.getMemberById(id);
+  const member = await membersService.getMemberById(req.params.id);
 
   return ok(
     res,
@@ -61,17 +79,102 @@ export const getById = asyncHandler(async (req, res) => {
   );
 });
 
-/** PATCH /members/:id — FSD-2.23 */
-export const updateById = asyncHandler(async (_req, _res) => {
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.23)');
+/**
+ * PATCH /members/:id
+ * Memperbarui profil dan data consent umat.
+ */
+export const updateById = asyncHandler(async (req, res) => {
+  const member = await membersService.updateMember(
+    req.params.id,
+    req.body as UpdateMemberInput,
+    req.user!,
+    req.ip,
+  );
+
+  return ok(
+    res,
+    member,
+    'Data umat berhasil diperbarui',
+  );
 });
 
-/** GET /members/:id/records — FSD-2.24 */
-export const getByIdRecords = asyncHandler(async (_req, _res) => {
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.24)');
+/**
+ * PATCH /members/:id/status
+ * Memperbarui status umat beserta alasan dan waktu perubahan.
+ */
+export const updateStatus = asyncHandler(async (req, res) => {
+  const result = await membersService.updateMemberStatus(
+    req.params.id,
+    req.body as UpdateMemberStatusInput,
+    req.user!,
+    req.ip,
+  );
+
+  return ok(
+    res,
+    result,
+    'Status umat berhasil diperbarui',
+  );
 });
 
-/** POST /members/:id/records — FSD-2.24 */
-export const postByIdRecords = asyncHandler(async (_req, _res) => {
-  throw new AppError('ERR-SYS-02', 'Belum diimplementasikan (FSD-2.24)');
+/**
+ * DELETE /members/:id
+ * Menonaktifkan data umat menggunakan soft-delete.
+ */
+export const remove = asyncHandler(async (req, res) => {
+  const result = await membersService.softDeleteMember(
+    req.params.id,
+    req.user!,
+    req.ip,
+  );
+
+  return ok(
+    res,
+    result,
+    'Data umat berhasil dinonaktifkan secara soft-delete',
+  );
+});
+
+// ==================================================
+// FSD-2.24: Riwayat Pelayanan, Sakramen, dan Katekese
+// ==================================================
+
+/**
+ * GET /members/:id/records
+ * Menampilkan riwayat pelayanan, sakramen, dan katekese
+ * secara kronologis berdasarkan data umat.
+ */
+export const getByIdRecords = asyncHandler(async (req, res) => {
+  const records = await recordsService.listMemberRecords(
+    req.params.id,
+    req.query as unknown as ListMemberRecordsQuery,
+  );
+
+  return ok(
+    res,
+    records,
+    'Riwayat umat berhasil diperoleh',
+  );
+});
+
+/**
+ * POST /members/:id/records
+ * Menambahkan riwayat pelayanan, sakramen, atau katekese.
+ *
+ * Data bersifat append-only. Koreksi dilakukan melalui
+ * catatan koreksi atau pencatatan baru sesuai jenis riwayat.
+ */
+export const postByIdRecords = asyncHandler(async (req, res) => {
+  const record = await recordsService.createMemberRecord(
+    req.params.id,
+    req.body as CreateMemberRecordInput,
+    req.user!,
+    req.ip,
+  );
+
+  return created(
+    res,
+    record,
+    'Riwayat umat berhasil ditambahkan',
+  );
 });
