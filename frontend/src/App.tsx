@@ -146,8 +146,8 @@ export default function App() {
           <Route element={<RoleRoute roles={['PHT']} />}>
             <Route path="/admin/workflows" element={<WorkflowPage />} /> {/* SCR-37 A */}
           </Route>
-          <Route element={<RoleRoute roles={['Sarpras']} />}>
-            <Route path="/admin/users" element={<UserList />} /> {/* SCR-04 B */}
+            <Route element={<RoleRoute roles={['Admin']} />}>
+            <Route path="/admin/users" element={<UserList />} />
           </Route>
           <Route element={<RoleRoute roles={['Bendahara']} />}>
             <Route path="/admin/settings" element={<SettingsPage />} /> {/* SCR-42 D */}

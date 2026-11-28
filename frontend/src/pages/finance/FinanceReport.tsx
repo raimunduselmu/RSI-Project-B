@@ -1,52 +1,355 @@
-// SCR-33 Laporan Keuangan & Donasi (FSD-2.35) — Template F
-import { DashboardPage } from '@/components/templates';
-import { Button, Card, Input, Select, Table } from '@/components/ui';
 
-// TODO: ambil dari GET /finance/reports?period=&type=
-const ROWS = [
-  { month: 'Agustus', open: 'Rp 15.200.000', inn: 'Rp 6.150.000', out: 'Rp 4.020.000', close: 'Rp 17.330.000' },
-  { month: 'September', open: 'Rp 17.330.000', inn: 'Rp 7.480.000', out: 'Rp 5.900.000', close: 'Rp 18.910.000' },
-  { month: 'Oktober', open: 'Rp 18.910.000', inn: 'Rp 9.010.000', out: 'Rp 6.250.000', close: 'Rp 21.670.000' },
-  { month: 'November', open: 'Rp 21.670.000', inn: 'Rp 8.420.000', out: 'Rp 5.960.000', close: 'Rp 24.130.000' },
-];
+// SCR-33 Laporan Keuangan & Donasi (FSD-2.35)
+
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
+import { Alert, Badge, Button, Card, Spinner } from '@/components/ui';
+import { PageHeader } from '@/components/shared/PageHeader';
+
+interface MonthlyReport {
+  bulan: string;
+  masuk: number;
+  keluar: number;
+  saldo_akhir: number;
+}
+
+interface CategoryReport {
+  kategori?: string;
+  category?: string;
+  masuk?: number;
+  keluar?: number;
+  total_masuk?: number;
+  total_keluar?: number;
+}
+
+interface BudgetReport {
+  pos_name?: string;
+  planned_amount?: number;
+  spent_amount?: number;
+  remaining?: number;
+  used_percent?: number;
+}
+
+interface FinanceReportData {
+  period?: {
+    period_id?: number;
+    period_name?: string;
+    name?: string;
+  } | null;
+  ringkasan: {
+    total_masuk: number;
+    total_keluar: number;
+    saldo: number;
+  };
+  per_bulan: MonthlyReport[];
+  per_kategori: CategoryReport[];
+  anggaran: BudgetReport[];
+  menunggu_persetujuan: number;
+}
+
+function rupiah(value: number) {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    maximumFractionDigits: 0,
+  }).format(Number(value) || 0);
+}
+
+function compactRupiah(value: number) {
+  return new Intl.NumberFormat('id-ID', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+    style: 'currency',
+    currency: 'IDR',
+  }).format(Number(value) || 0);
+}
 
 export default function FinanceReport() {
-  return (
-    <DashboardPage
-      code="SCR-33"
-      eyebrow="Keuangan"
-      title="Laporan Keuangan & Donasi"
-      actions={<Button icon="download">Ekspor PDF / Excel</Button>}
-      topSlot={
-        <Card>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Select no={1} label="Periode" required options={['2026/2027', '2025/2026']} />
-            <Input no={2} label="Rentang Tanggal" defaultValue="01/08/2026 – 18/11/2026" />
-            <Select no={3} label="Jenis Laporan" required options={['Kas', 'Anggaran', 'Donasi']} />
-          </div>
-        </Card>
+  const [report, setReport] = useState<FinanceReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadReport() {
+      setLoading(true);
+      setError('');
+
+      try {
+        const result = await api.get<FinanceReportData>('/reports');
+
+        if (active) {
+          setReport(result);
+        }
+      } catch (err) {
+        if (active) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Gagal mengambil laporan keuangan.',
+          );
+        }
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
       }
-      stats={[
-        { label: 'Saldo Awal', value: 'Rp 15,2 jt' },
-        { label: 'Total Masuk', value: 'Rp 31,1 jt', tone: 'green' },
-        { label: 'Total Keluar', value: 'Rp 22,1 jt', tone: 'ember' },
-        { label: 'Saldo Akhir', value: 'Rp 24,1 jt', tone: 'brand' },
-      ]}
-      panelCols={1}
-    >
-      <Card title="Laporan Kas · Agustus–November 2026">
-        <Table
-          rows={ROWS}
-          rowKey={(r) => r.month}
-          columns={[
-            { header: 'Bulan', cell: (r) => <span className="font-medium text-ink">{r.month}</span> },
-            { header: 'Saldo Awal', cell: (r) => r.open, align: 'right' },
-            { header: 'Masuk', cell: (r) => <span className="text-emerald-600">{r.inn}</span>, align: 'right' },
-            { header: 'Keluar', cell: (r) => <span className="text-brand-700">{r.out}</span>, align: 'right' },
-            { header: 'Saldo Akhir', cell: (r) => r.close, align: 'right' },
-          ]}
-        />
-      </Card>
-    </DashboardPage>
+    }
+
+    loadReport();
+
+    return () => {
+      active = false;
+    };
+  }, [refreshKey]);
+
+  const summary = report?.ringkasan;
+
+  return (
+    <>
+      <PageHeader
+        code="SCR-33"
+        title="Laporan Keuangan & Donasi"
+        subtitle="Ringkasan pemasukan, pengeluaran, dan penggunaan anggaran."
+        actions={
+          <Button
+            variant="secondary"
+            onClick={() => setRefreshKey((value) => value + 1)}
+            disabled={loading}
+          >
+            Muat Ulang
+          </Button>
+        }
+      />
+
+      {error && (
+        <div className="mb-4">
+          <Alert tone="error">{error}</Alert>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center gap-3 py-16">
+          <Spinner />
+          <span className="text-sm text-stone-500">
+            Memuat laporan keuangan...
+          </span>
+        </div>
+      ) : !report ? (
+        <div className="rounded-xl border border-stone-200 bg-white p-8 text-center">
+          <p className="text-sm text-stone-500">
+            Data laporan belum tersedia.
+          </p>
+          <Button
+            className="mt-4"
+            onClick={() => setRefreshKey((value) => value + 1)}
+          >
+            Coba Lagi
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-sm text-stone-500">Periode laporan</p>
+              <p className="font-semibold text-stone-800">
+                {report.period?.period_name ??
+                  report.period?.name ??
+                  'Periode aktif'}
+              </p>
+            </div>
+
+            <Badge
+              status={
+                report.menunggu_persetujuan > 0
+                  ? 'MENUNGGU_PERSETUJUAN'
+                  : 'DISETUJUI'
+              }
+              label={`${report.menunggu_persetujuan} transaksi menunggu persetujuan`}
+            />
+          </div>
+
+          <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Card>
+              <p className="text-sm text-stone-500">Total Kas Masuk</p>
+              <p className="mt-2 text-xl font-bold text-emerald-600">
+                {compactRupiah(summary?.total_masuk ?? 0)}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">
+                Seluruh pemasukan disetujui
+              </p>
+            </Card>
+
+            <Card>
+              <p className="text-sm text-stone-500">Total Kas Keluar</p>
+              <p className="mt-2 text-xl font-bold text-red-600">
+                {compactRupiah(summary?.total_keluar ?? 0)}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">
+                Seluruh pengeluaran disetujui
+              </p>
+            </Card>
+
+            <Card>
+              <p className="text-sm text-stone-500">Saldo Akhir</p>
+              <p className="mt-2 text-xl font-bold text-brand-700">
+                {compactRupiah(summary?.saldo ?? 0)}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">
+                Saldo kas periode
+              </p>
+            </Card>
+
+            <Card>
+              <p className="text-sm text-stone-500">
+                Menunggu Persetujuan
+              </p>
+              <p className="mt-2 text-xl font-bold text-amber-600">
+                {report.menunggu_persetujuan}
+              </p>
+              <p className="mt-1 text-xs text-stone-400">
+                Transaksi menunggu keputusan PHT
+              </p>
+            </Card>
+          </div>
+
+          <Card>
+            <h2 className="mb-4 font-semibold text-stone-800">
+              Ringkasan Kas Per Bulan
+            </h2>
+
+            {report.per_bulan.length === 0 ? (
+              <p className="py-8 text-center text-sm text-stone-500">
+                Belum ada data laporan bulanan.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[650px] text-left text-sm">
+                  <thead className="bg-stone-50 text-stone-600">
+                    <tr>
+                      <th className="p-3">Bulan</th>
+                      <th className="p-3 text-right">Kas Masuk</th>
+                      <th className="p-3 text-right">Kas Keluar</th>
+                      <th className="p-3 text-right">Saldo Akhir</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-stone-100">
+                    {report.per_bulan.map((item, index) => (
+                      <tr key={`${item.bulan}-${index}`}>
+                        <td className="p-3 font-medium text-stone-800">
+                          {item.bulan}
+                        </td>
+                        <td className="p-3 text-right text-emerald-600">
+                          {rupiah(item.masuk)}
+                        </td>
+                        <td className="p-3 text-right text-red-600">
+                          {rupiah(item.keluar)}
+                        </td>
+                        <td className="p-3 text-right font-semibold">
+                          {rupiah(item.saldo_akhir)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <div className="mt-5 grid gap-5 xl:grid-cols-2">
+            <Card>
+              <h2 className="mb-4 font-semibold text-stone-800">
+                Laporan Per Kategori
+              </h2>
+
+              {report.per_kategori.length === 0 ? (
+                <p className="py-6 text-center text-sm text-stone-500">
+                  Belum ada data kategori.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {report.per_kategori.map((item, index) => (
+                    <div
+                      key={`${item.kategori ?? item.category ?? 'kategori'}-${index}`}
+                      className="rounded-lg border border-stone-100 p-3"
+                    >
+                      <p className="mb-2 font-medium text-stone-800">
+                        {item.kategori ?? item.category ?? 'Tanpa kategori'}
+                      </p>
+
+                      <div className="flex flex-wrap justify-between gap-2 text-sm">
+                        <span className="text-emerald-600">
+                          Masuk:{' '}
+                          {rupiah(item.masuk ?? item.total_masuk ?? 0)}
+                        </span>
+                        <span className="text-red-600">
+                          Keluar:{' '}
+                          {rupiah(item.keluar ?? item.total_keluar ?? 0)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            <Card>
+              <h2 className="mb-4 font-semibold text-stone-800">
+                Ringkasan Anggaran
+              </h2>
+
+              {report.anggaran.length === 0 ? (
+                <p className="py-6 text-center text-sm text-stone-500">
+                  Belum ada data anggaran.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {report.anggaran.map((item, index) => {
+                    const percent = Math.min(
+                      100,
+                      Math.max(0, Number(item.used_percent) || 0),
+                    );
+
+                    return (
+                      <div key={`${item.pos_name ?? 'anggaran'}-${index}`}>
+                        <div className="mb-1 flex justify-between gap-2 text-sm">
+                          <span className="font-medium text-stone-800">
+                            {item.pos_name ?? 'Pos anggaran'}
+                          </span>
+                          <span className="text-stone-500">
+                            {percent.toFixed(0)}%
+                          </span>
+                        </div>
+
+                        <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+                          <div
+                            className="h-full rounded-full bg-brand-600"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+
+                        <div className="mt-1 flex justify-between gap-2 text-xs text-stone-500">
+                          <span>
+                            Terpakai:{' '}
+                            {rupiah(item.spent_amount ?? 0)}
+                          </span>
+                          <span>
+                            Anggaran:{' '}
+                            {rupiah(item.planned_amount ?? 0)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        </>
+      )}
+    </>
   );
 }
